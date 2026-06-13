@@ -101,35 +101,65 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* --- עיצוב רגיל למחשב (כבר קיים אצלך) --- */
-        .main-layout {
-          display: flex;
-          flex-direction: row; /* האלמנטים עומדים זה לצד זה במחשב */
-        }
-        
-        /* --- קסם המובייל: יופעל רק על מסכים קטנים (כמו טלפונים) --- */
-        @media (max-width: 768px) {
-          
-          .main-layout {
-            flex-direction: column; /* במובייל, האלמנטים יסתדרו אחד מתחת לשני */
-          }
-        
-          .sidebar {
-            display: none; /* אם יש לך תפריט צדדי של מחשב, אפשר פשוט להחביא אותו בטלפון */
-          }
-        
-          .content-box {
-            width: 100%; /* ניצול של כל רוחב המסך בטלפון */
-            padding: 15px; /* מרווח פנימי נעים לאצבעות */
-            box-sizing: border-box;
-          }
-        
-          button {
-            width: 100%; /* כפתורים רחבים וקלים ללחיצה במובייל */
-            font-size: 18px;
-            padding: 12px;
-          }
-        }
+       @media (max-width: 768px) {
+      /* קופסת האפליקציה הראשית - תופסת את כל המסך בלי שוליים */
+      .app-container {
+        width: 100%;
+        height: 100vh;
+        padding: 0;
+        margin: 0;
+        border-radius: 0; /* ביטול פינות עגולות של גרסת מחשב */
+      }
+    
+      /* כותרת הפתק */
+      .note-title-input {
+        font-size: 24px;
+        font-weight: bold;
+        width: 100%;
+        border: none;
+        outline: none;
+        padding: 20px 20px 10px 20px;
+        box-sizing: border-box;
+        background: transparent;
+      }
+    
+      /* אזור כתיבת התוכן - מרגיש כמו דף חלק */
+      .note-textarea {
+        width: 100%;
+        height: calc(100vh - 120px); /* תופס את שאר גובה המסך */
+        border: none;
+        outline: none;
+        padding: 10px 20px;
+        font-size: 17px; /* גודל מושלם לקריאה וכתיבה בנייד */
+        line-height: 1.6;
+        resize: none; /* ביטול אפשרות שינוי הגודל הידנית */
+        box-sizing: border-box;
+        background: transparent;
+      }
+    }
+            @media (max-width: 768px) {
+      /* במובייל - רשימת המחברות מוסתרת כברירת מחדל */
+      .sidebar {
+        display: none;
+        width: 100%;
+        height: 100vh;
+      }
+    
+      /* אזור הכתיבה תופס את כל המסך */
+      .editor {
+        width: 100%;
+      }
+    
+      /* כשנרצה להציג את רשימת המחברות, נוסיף לה קלאס active עם JavaScript */
+      .sidebar.active {
+        display: block;
+      }
+      
+      /* ובמקביל נחביא את העורך */
+      .sidebar.active + .editor {
+        display: none;
+      }
+    }
     </style>
 </head>
 <body class="bg-zinc-50 text-black min-h-screen flex flex-col">
