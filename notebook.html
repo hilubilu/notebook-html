@@ -100,6 +100,36 @@
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* --- עיצוב רגיל למחשב (כבר קיים אצלך) --- */
+        .main-layout {
+          display: flex;
+          flex-direction: row; /* האלמנטים עומדים זה לצד זה במחשב */
+        }
+        
+        /* --- קסם המובייל: יופעל רק על מסכים קטנים (כמו טלפונים) --- */
+        @media (max-width: 768px) {
+          
+          .main-layout {
+            flex-direction: column; /* במובייל, האלמנטים יסתדרו אחד מתחת לשני */
+          }
+        
+          .sidebar {
+            display: none; /* אם יש לך תפריט צדדי של מחשב, אפשר פשוט להחביא אותו בטלפון */
+          }
+        
+          .content-box {
+            width: 100%; /* ניצול של כל רוחב המסך בטלפון */
+            padding: 15px; /* מרווח פנימי נעים לאצבעות */
+            box-sizing: border-box;
+          }
+        
+          button {
+            width: 100%; /* כפתורים רחבים וקלים ללחיצה במובייל */
+            font-size: 18px;
+            padding: 12px;
+          }
+        }
     </style>
 </head>
 <body class="bg-zinc-50 text-black min-h-screen flex flex-col">
