@@ -101,22 +101,119 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-       @media (max-width: 768px) {
+        /* ===================== MOBILE STYLES ===================== */
+        #mobileBottomNav, #mobileFAB, #mobileFormatBar, #mobileSidebarBackdrop { display: none; }
+        
+        @media (max-width: 767px) {
+            /* --- Core layout --- */
+            body { overflow: hidden; }
+            main { height: calc(100dvh - 56px) !important; padding-bottom: 56px; overflow: hidden; }
+            
+            /* --- Header → compact --- */
+            #mainHeader { height: 56px; padding: 0 14px; }
+            #mainHeader .desktop-only { display: none !important; }
+
+            /* --- Sidebar → fullscreen overlay drawer --- */
+            #notebooksSidebar {
+                position: fixed !important;
+                top: 56px; right: 0; bottom: 56px;
+                width: 88vw !important; max-width: 310px;
+                z-index: 200 !important;
+                transform: translateX(105%) !important;
+                transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+                box-shadow: -8px 0 32px rgba(0,0,0,0.18) !important;
+                border-left: 2px solid #000 !important;
+                overflow-y: auto;
+            }
+            #notebooksSidebar.mob-open { transform: translateX(0) !important; }
+            #mobileSidebarBackdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.28s; }
+            #mobileSidebarBackdrop.visible { opacity: 1; pointer-events: auto; }
+
+            /* --- Editor: full width, no outer padding --- */
+            #editorContainer { padding: 0 !important; width: 100% !important; }
+
+            /* --- Notebook view: edge-to-edge --- */
+            #view-notebook { max-width: 100% !important; border: none !important; border-radius: 0; box-shadow: none !important; }
+            #view-todo, #view-glossary, #view-calendar { border: none !important; box-shadow: none !important; max-width: 100% !important; }
+
+            /* --- Workspace header compact --- */
+            #workspaceHeader { padding: 6px 12px !important; }
+            #activeNotebookIcon { font-size: 1.2rem; }
+            #activeNotebookTitle { font-size: 0.95rem !important; }
+
+            /* --- Desktop toolbar → hidden; mobile format bar shown --- */
+            .editor-toolbar-row { display: none !important; }
+            #mobileFormatBar { display: flex !important; }
+
+            /* --- Paper: tighter padding for small screens --- */
+            #noteContent { padding-top: 12px !important; padding-bottom: 60px !important; }
+            #noteContent.paper-rtl { padding-right: 48px !important; padding-left: 10px !important; }
+            #noteContent.paper-ltr { padding-left: 48px !important; padding-right: 10px !important; }
+            .paper-rtl::before { right: 40px !important; }
+            .paper-ltr::before { left: 40px !important; }
+
+            /* --- Dashboard compact --- */
+            #view-dashboard { padding: 20px 14px 80px !important; }
+            #view-dashboard .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            #view-dashboard button { padding: 14px 8px !important; gap: 8px !important; }
+            #view-dashboard .text-lg { font-size: 0.8rem !important; }
+            #view-dashboard i[data-lucide] { width: 22px !important; height: 22px !important; }
+
+            /* --- Bottom nav --- */
+            #mobileBottomNav { display: flex !important; }
+
+            /* --- FAB --- */
+            #mobileFAB { display: flex !important; }
+
+            /* --- Mobile toolbar sheet hidden by default --- */
+            #mobileToolbarSheet { transform: translateY(100%); }
+            #mobileToolbarSheet.open { transform: translateY(0); }
+            
+            /* --- Tab bar compact --- */
+            #pagesTabsContainer { overflow-x: auto; padding-top: 4px; }
+
+            /* --- Focus mode on mobile --- */
+            .focus-mode-active #mobileFormatBar { display: none !important; }
+            .focus-mode-active #pagesTabsContainer { display: none !important; }
+            .focus-mode-active #mobileBottomNav { display: none !important; }
+            .focus-mode-active main { padding-bottom: 0 !important; }
+        }
+
+        /* Mobile format bar & toolbar sheet styles (always defined, only visible on mobile) */
+        #mobileFormatBar { align-items: center; background: #fff; border-top: 2px solid #000; border-bottom: 1px solid #e5e5e5; height: 46px; overflow-x: auto; gap: 2px; padding: 0 6px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; }
+        #mobileFormatBar button { flex-shrink: 0; min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; border: none; background: transparent; }
+        #mobileFormatBar button:active { background: #e5e7eb; }
+        #mobileFormatBar .mob-sep { width: 1px; height: 22px; background: #d1d5db; flex-shrink: 0; margin: 0 2px; }
+
+        #mobileToolbarSheet { position: fixed; bottom: 56px; left: 0; right: 0; background: #fff; border-top: 2px solid #000; z-index: 150; padding: 10px 12px 14px; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); }
+        #mobileToolbarSheet .sheet-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+        #mobileToolbarSheet button { display: flex; align-items: center; gap: 5px; padding: 7px 11px; border: 1.5px solid #000; font-size: 11px; font-weight: 700; background: #fff; flex-shrink: 0; }
+        #mobileToolbarSheet button:active { background: #f3f4f6; }
     </style>
 </head>
 <body class="bg-zinc-50 text-black min-h-screen flex flex-col">
 
     <!-- סרגל עליון ראשי -->
     <header id="mainHeader" class="bg-white border-b-2 border-black px-6 py-3 flex items-center justify-between sticky top-0 z-40">
-        <div class="flex items-center gap-3 cursor-pointer hover:opacity-70 transition group" onclick="toggleNotebooksSidebar()" title="הצג/הסתר סביבת מחברות">
-            <div class="border-2 border-black p-1.5 bg-black text-white group-hover:bg-zinc-800 transition">
-                <i data-lucide="book" class="w-5 h-5"></i>
+        <div class="flex items-center gap-3">
+            <!-- Mobile hamburger (sidebar toggle) -->
+            <button class="hidden max-md:flex items-center justify-center w-9 h-9 border-2 border-black bg-black text-white" onclick="toggleMobileSidebar()" title="תפריט">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+            <!-- Desktop logo -->
+            <div class="flex items-center gap-3 cursor-pointer hover:opacity-70 transition group desktop-only" onclick="toggleNotebooksSidebar()" title="הצג/הסתר סביבת מחברות">
+                <div class="border-2 border-black p-1.5 bg-black text-white group-hover:bg-zinc-800 transition">
+                    <i data-lucide="book" class="w-5 h-5"></i>
+                </div>
+                <h1 class="text-xl font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
             </div>
-            <h1 class="text-xl font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
+            <!-- Mobile logo (no click) -->
+            <h1 class="hidden max-md:block text-lg font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
         </div>
         <div class="flex items-center gap-4">
-            <button onclick="switchMainView('dashboard')" class="text-xs font-bold hover:underline flex items-center gap-1"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> לוח בקרה ראשי</button>
-            <span id="apiKeyStatusIndicator" class="text-xs font-bold text-zinc-500 bg-zinc-100 border border-zinc-300 py-1 px-2.5 rounded-sm">Gemini AI</span>
+            <button onclick="switchMainView('dashboard')" class="desktop-only text-xs font-bold hover:underline flex items-center gap-1"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> לוח בקרה ראשי</button>
+            <button onclick="openGlobalSearch()" class="hidden max-md:flex items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 transition" title="חיפוש"><i data-lucide="search" class="w-5 h-5"></i></button>
+            <span id="apiKeyStatusIndicator" class="desktop-only text-xs font-bold text-zinc-500 bg-zinc-100 border border-zinc-300 py-1 px-2.5 rounded-sm">Gemini AI</span>
         </div>
     </header>
 
@@ -334,6 +431,50 @@
                 </div>
 
                 <div class="bg-zinc-200/50 border-b-2 border-black px-2 pt-1 flex items-end gap-1 overflow-x-auto no-scrollbar" id="pagesTabsContainer"></div>
+
+                <!-- Mobile Format Bar (shown only on mobile, replaces desktop toolbar) -->
+                <div id="mobileFormatBar">
+                    <button onclick="setPageDirection('rtl')" title="RTL" class="text-xs font-black">א</button>
+                    <button onclick="setPageDirection('ltr')" title="LTR" class="text-xs font-black">A</button>
+                    <div class="mob-sep"></div>
+                    <button onclick="formatDoc('bold')" title="מודגש"><b class="text-sm">B</b></button>
+                    <button onclick="formatDoc('italic')" title="נטוי"><i class="text-sm">I</i></button>
+                    <button onclick="formatDoc('underline')" title="קו תחתון"><u class="text-sm">U</u></button>
+                    <div class="mob-sep"></div>
+                    <button onclick="formatBlock('h1')" title="כותרת" class="text-xs font-black">H1</button>
+                    <button onclick="formatBlock('h2')" title="כותרת משנה" class="text-xs font-black">H2</button>
+                    <div class="mob-sep"></div>
+                    <button onclick="highlightText('#fef08a')" title="סמן" style="font-size:16px;">🖊</button>
+                    <button onclick="highlightText('transparent')" title="הסר סימון" class="text-red-500 text-xs font-bold">✕</button>
+                    <div class="mob-sep"></div>
+                    <button onclick="startVoiceInput()" title="קלט קולי" id="voiceBtn"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                    <div class="mob-sep"></div>
+                    <button onclick="toggleMobileToolbarSheet()" title="עוד אפשרויות" class="text-zinc-600 font-black text-lg px-2">⋯</button>
+                </div>
+
+                <!-- Mobile Toolbar Sheet (slide-up panel with extra tools) -->
+                <div id="mobileToolbarSheet">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black uppercase tracking-wider text-zinc-500">כלים נוספים</span>
+                        <button onclick="toggleMobileToolbarSheet()" class="text-zinc-400 text-lg font-bold leading-none">×</button>
+                    </div>
+                    <div class="sheet-row">
+                        <button onclick="changePageType('ruled'); toggleMobileToolbarSheet()"><i data-lucide="align-left" class="w-3.5 h-3.5"></i> שורות</button>
+                        <button onclick="changePageType('grid'); toggleMobileToolbarSheet()"><i data-lucide="grid" class="w-3.5 h-3.5"></i> משבצות</button>
+                        <button onclick="changePageType('canvas'); toggleMobileToolbarSheet()"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> שרטוט</button>
+                    </div>
+                    <div class="sheet-row">
+                        <button onclick="changeZoom(1); toggleMobileToolbarSheet()"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i> A+</button>
+                        <button onclick="changeZoom(-1); toggleMobileToolbarSheet()"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i> A-</button>
+                        <button onclick="insertCodeBlock(); toggleMobileToolbarSheet()"><i data-lucide="code" class="w-3.5 h-3.5"></i> קוד</button>
+                    </div>
+                    <div class="sheet-row">
+                        <button onmousedown="event.preventDefault(); captureGlossarySelection();" onclick="addSelectionToGlossary(); toggleMobileToolbarSheet()"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i> מונח</button>
+                        <button onclick="openVersionHistory(); toggleMobileToolbarSheet()"><i data-lucide="history" class="w-3.5 h-3.5"></i> היסטוריה</button>
+                        <button onclick="document.getElementById('aiFileInput').click(); toggleMobileToolbarSheet()"><i data-lucide="upload" class="w-3.5 h-3.5"></i> העלאה</button>
+                        <button onclick="savePageAsPDF(); toggleMobileToolbarSheet()"><i data-lucide="download" class="w-3.5 h-3.5"></i> PDF</button>
+                    </div>
+                </div>
                 
                 <div id="paperWrapper" class="flex-1 relative overflow-hidden bg-zinc-100">
                     <!-- הוספת לכידת לחיצה לגוף הדף להבטחת כתיבה ופוקוס מלאים בכל מקום -->
@@ -689,6 +830,7 @@
             if (viewName === 'dashboard') renderDashboardReview();
             if (viewName === 'notebook') updateView();
             
+            updateMobileNavHighlight && updateMobileNavHighlight(viewName);
             lucide.createIcons();
         }
 
@@ -1880,6 +2022,161 @@
             const modal = document.getElementById('versionHistoryModal'); modal.classList.add('hidden'); modal.classList.remove('flex');
         }
 
+        /* ===================== MOBILE FEATURES ===================== */
+
+        // --- Sidebar drawer ---
+        function toggleMobileSidebar() {
+            const sb = document.getElementById('notebooksSidebar');
+            const bd = document.getElementById('mobileSidebarBackdrop');
+            const isOpen = sb.classList.contains('mob-open');
+            if (isOpen) { sb.classList.remove('mob-open'); bd.classList.remove('visible'); }
+            else { sb.classList.add('mob-open'); bd.classList.add('visible'); }
+        }
+        function closeMobileSidebar() {
+            document.getElementById('notebooksSidebar').classList.remove('mob-open');
+            document.getElementById('mobileSidebarBackdrop').classList.remove('visible');
+        }
+
+        // --- Bottom navigation ---
+        function mobileNav(viewName) {
+            closeMobileSidebar();
+            switchMainView(viewName);
+            updateMobileNavHighlight(viewName);
+        }
+        function updateMobileNavHighlight(viewName) {
+            document.querySelectorAll('.mnav-btn').forEach(btn => {
+                btn.classList.remove('text-black'); btn.classList.add('text-zinc-400');
+            });
+            const active = document.getElementById('mnav-' + viewName);
+            if (active) { active.classList.add('text-black'); active.classList.remove('text-zinc-400'); }
+        }
+
+        // --- Mobile toolbar sheet ---
+        let toolbarSheetOpen = false;
+        function toggleMobileToolbarSheet() {
+            const sheet = document.getElementById('mobileToolbarSheet');
+            toolbarSheetOpen = !toolbarSheetOpen;
+            sheet.classList.toggle('open', toolbarSheetOpen);
+        }
+
+        // --- Voice input (Web Speech API) ---
+        let voiceRecognition = null;
+        function startVoiceInput() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { showToast('קלט קולי אינו נתמך בדפדפן זה.', 'error'); return; }
+            if (voiceRecognition) { voiceRecognition.stop(); voiceRecognition = null; updateVoiceBtn(false); return; }
+            voiceRecognition = new SR();
+            voiceRecognition.lang = 'he-IL'; voiceRecognition.continuous = false; voiceRecognition.interimResults = false;
+            voiceRecognition.onstart = () => { updateVoiceBtn(true); showToast('מאזין... דבר עכשיו 🎙', 'info'); };
+            voiceRecognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                const editor = document.getElementById('noteContent'); if (!editor) return;
+                editor.focus(); document.execCommand('insertText', false, text + ' ');
+                saveHistoryState(); savePageData();
+                showToast('✓ "' + text.slice(0, 30) + '"', 'success');
+            };
+            voiceRecognition.onerror = () => { showToast('שגיאת קלט קולי.', 'error'); };
+            voiceRecognition.onend = () => { voiceRecognition = null; updateVoiceBtn(false); };
+            voiceRecognition.start();
+        }
+        function updateVoiceBtn(active) {
+            const btn = document.getElementById('voiceBtn');
+            if (!btn) return;
+            btn.style.background = active ? '#ef4444' : '';
+            btn.style.color = active ? '#fff' : '';
+            btn.style.borderRadius = active ? '6px' : '';
+        }
+
+        // --- Swipe gesture: swipe RIGHT → open sidebar ---
+        let swipeStartX = 0, swipeStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (window.innerWidth > 767) return;
+            const dx = e.changedTouches[0].clientX - swipeStartX;
+            const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
+            if (Math.abs(dx) < 60 || dy > 60) return; // must be mostly horizontal
+            const sb = document.getElementById('notebooksSidebar');
+            if (dx < -60 && !sb.classList.contains('mob-open')) toggleMobileSidebar(); // swipe left = open (RTL)
+            if (dx > 60 && sb.classList.contains('mob-open')) closeMobileSidebar(); // swipe right = close
+        }, { passive: true });
+
+        // --- Auto-hide toolbar on scroll, reveal on scroll up ---
+        let lastScrollY = 0;
+        const paperSheetEl = document.getElementById('paperSheet');
+        if (paperSheetEl) {
+            paperSheetEl.addEventListener('scroll', () => {
+                if (window.innerWidth > 767) return;
+                const curr = paperSheetEl.scrollTop;
+                const mfb = document.getElementById('mobileFormatBar');
+                const tabs = document.getElementById('pagesTabsContainer');
+                if (!mfb) return;
+                if (curr > lastScrollY + 8 && curr > 40) { // scrolling down
+                    mfb.style.transform = 'translateY(-100%)';
+                    mfb.style.transition = 'transform 0.2s';
+                    if (tabs) { tabs.style.transform = 'translateY(-100%)'; tabs.style.transition = 'transform 0.2s'; }
+                } else if (curr < lastScrollY - 8) { // scrolling up
+                    mfb.style.transform = '';
+                    if (tabs) tabs.style.transform = '';
+                }
+                lastScrollY = curr;
+            }, { passive: true });
+        }
+
+        // Close toolbar sheet when tapping paper
+        document.getElementById('paperSheet')?.addEventListener('touchstart', () => {
+            if (toolbarSheetOpen) { toolbarSheetOpen = false; const s = document.getElementById('mobileToolbarSheet'); if(s) s.classList.remove('open'); }
+        }, { passive: true });
+
+        // Override selectNotebook to also close sidebar on mobile
+        const _origSelectNotebook = selectNotebook;
+        function selectNotebook(id) {
+            _origSelectNotebook(id);
+            if (window.innerWidth <= 767) { setTimeout(closeMobileSidebar, 80); updateMobileNavHighlight('notebook'); }
+        }
+
     </script>
+
+    <!-- Mobile: Sidebar Backdrop -->
+    <div id="mobileSidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
+    <!-- Mobile: Bottom Navigation Bar -->
+    <nav id="mobileBottomNav" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black z-[190] h-14">
+        <div class="flex h-full">
+            <button id="mnav-dashboard" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('dashboard')">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">בית</span>
+            </button>
+            <button id="mnav-notebooks" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="toggleMobileSidebar()">
+                <i data-lucide="book-open" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">מחברות</span>
+            </button>
+            <button id="mnav-notebook" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400 relative" onclick="mobileNav('notebook')">
+                <!-- Middle button: slightly elevated -->
+                <span class="absolute -top-4 w-12 h-12 bg-black rounded-full flex items-center justify-center shadow-lg">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-white"></i>
+                </span>
+                <span class="text-[9px] font-bold uppercase mt-4">כתוב</span>
+            </button>
+            <button id="mnav-todo" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('todo')">
+                <i data-lucide="list-todo" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">משימות</span>
+            </button>
+            <button id="mnav-glossary" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('glossary')">
+                <i data-lucide="library" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">מילון</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile: FAB (quick new page when in notebook) -->
+    <button id="mobileFAB" onclick="if(activeNotebookId) openCreatePageModal(); else openNewNotebookModal();"
+        class="fixed right-4 z-[185] w-13 h-13 bg-black text-white shadow-[4px_4px_0_0_rgba(0,0,0,0.25)] items-center justify-center rounded-full transition-all active:scale-95"
+        style="bottom: 72px; width: 52px; height: 52px;" title="דף חדש">
+        <i data-lucide="plus" class="w-6 h-6"></i>
+    </button>
+
 </body>
 </html>
