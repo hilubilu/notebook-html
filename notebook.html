@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ENOTE - מחברת לימודים חכמה</title>
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Highlight.js - Premium Dark Theme (Atom One Dark) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" id="hljs-theme">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+    <!-- html2canvas for exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- jsPDF for PDF exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- PDF.js for AI text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
+    <!-- Mammoth.js for DOCX text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body { font-family: 'Assistant', sans-serif; background-color: #fafafa; }
+        .mono-font { font-family: 'JetBrains Mono', monospace; }
+
+        :root { --line-height: 40px; --font-size: 18px; --paper-offset: 12px; }
+
+        /* נייר ומחברת */
+        .ruled-paper { background-color: #ffffff; background-image: repeating-linear-gradient(transparent, transparent 39px, #e4e4e7 39px, #e4e4e7 40px); position: relative; }
+        .grid-paper { background-color: #ffffff; background-image: linear-gradient(0deg, transparent 19px, #e4e4e7 19px, #e4e4e7 20px), linear-gradient(90deg, transparent 19px, #e4e4e7 19px, #e4e4e7 20px); background-size: 20px 20px; position: relative; }
+        .canvas-paper { background-color: #ffffff; position: relative; }
+        .paper-rtl::before { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background-color: #fca5a5; z-index: 1; right: 60px; left: auto; }
+        .paper-ltr::before { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background-color: #fca5a5; z-index: 1; left: 60px; right: auto; }
+
+        #noteContent { 
+            font-size: var(--font-size) !important; 
+            line-height: var(--line-height) !important; 
+            min-height: calc(100vh - 200px);
+            box-sizing: border-box;
+            width: 100%; outline: none; position: relative; 
+            z-index: 10; padding-top: var(--paper-offset); padding-bottom: 40px; 
+        }
+        #noteContent, #noteContent p, #noteContent div, #noteContent ul, #noteContent li { line-height: var(--line-height) !important; }
+        #noteContent ul { list-style-type: disc; margin-right: 40px; }
+        #noteContent.dir-ltr ul { margin-right: 0; margin-left: 40px; }
+        /* כותרות: גודל פונט שונה אך אותו line-height - תיקון היסט הבייסליין באמצעות translateY קל */
+        #noteContent h1 { font-size: 28px !important; font-weight: 800 !important; line-height: var(--line-height) !important; margin: 0 !important; padding: 0 !important; color: #000000; display: block; transform: translateY(-3px); }
+        #noteContent h2 { font-size: 21px !important; font-weight: 700 !important; line-height: var(--line-height) !important; margin: 0 !important; padding: 0 !important; color: #1f2937; display: block; transform: translateY(-1px); }
+        #noteContent.dir-rtl { direction: rtl; text-align: right; padding-right: 75px; padding-left: 20px; }
+        #noteContent.dir-ltr { direction: ltr; text-align: left; padding-left: 75px; padding-right: 20px; }
+
+        /* סגנונות מבודדים וקומפקטיים לבלוק קוד */
+        .code-block-container, .code-block-container * { line-height: 1.2 !important; font-family: 'JetBrains Mono', monospace !important; font-size: 13px !important; }
+        .code-input { line-height: 1.2 !important; white-space: pre !important; font-size: 13px !important; }
+
+        /* טאבים */
+        .page-tab { padding: 6px 12px; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; white-space: nowrap; display: flex; align-items: center; gap: 8px; border: 2px solid transparent; }
+        .page-tab.active { background-color: black; color: white; border-color: black; }
+        .page-tab:hover:not(.active) { background-color: #e4e4e7; }
+
+        /* אנימציות */
+        .workspace-parent { perspective: 1200px; }
+        @keyframes crumpleEffect {
+            0% { transform: translate3d(0, 0, 0) scale(1) rotateX(0deg); filter: brightness(1); opacity: 1; }
+            20% { transform: translate3d(-15px, -5px, 50px) scaleY(0.95) scaleX(0.45) rotateY(55deg) rotateZ(-3deg) skewY(6deg); filter: brightness(0.92); border-radius: 20px; }
+            45% { transform: translate3d(15px, -15px, 100px) scaleX(0.38) scaleY(0.18) rotateX(65deg) rotateY(15deg) rotateZ(12deg) skewX(-10deg); filter: brightness(0.82); border-radius: 40px; box-shadow: inset 0 0 40px rgba(0,0,0,0.3); }
+            75% { transform: translate3d(0, 260px, -100px) scale(0.04) rotateZ(280deg); filter: brightness(0.62); opacity: 0.95; }
+            100% { transform: translate3d(0, 560px, -500px) scale(0) rotateZ(360deg); opacity: 0; }
+        }
+        .crumple-animation { animation: crumpleEffect 0.85s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important; pointer-events: none !important; transform-origin: center center; backface-visibility: hidden; }
+
+        @keyframes binShake { 0%, 100% { transform: scale(1) rotate(0deg); } 20% { transform: scale(1.05) rotate(-4deg) translate(-2px, 2px); } 40% { transform: scale(0.95) rotate(4deg) translate(2px, -1px); } 60% { transform: scale(1.02) rotate(-2deg); } 80% { transform: scale(0.98) rotate(1deg); } }
+        .shake-bin { animation: binShake 0.4s ease-in-out; }
+
+        /* Focus Mode */
+        .focus-mode-active #mainHeader, .focus-mode-active #notebooksSidebar, .focus-mode-active #pagesTabsContainer, .focus-mode-active #workspaceHeader, .focus-mode-active .editor-toolbar-row { display: none !important; }
+        .focus-mode-active #view-notebook { border: none !important; box-shadow: none !important; max-width: 100% !important; height: 100vh !important; padding: 0 !important; margin: 0 !important; overflow: hidden; }
+        .focus-mode-active #editorContainer { padding: 0 !important; }
+        .dir-rtl-active #exitFocusModeBtn { right: 68px; left: auto; }
+        .dir-ltr-active #exitFocusModeBtn { left: 68px; right: auto; }
+
+        @keyframes pulseIndicator { 0%, 100% { transform: scale(1); opacity: 0.4; } 50% { transform: scale(1.3); opacity: 1; } }
+        .pulse-active { animation: pulseIndicator 1.2s infinite ease-in-out; }
+        #aiLoadingOverlay { backdrop-filter: blur(3px); }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ===================== MOBILE STYLES ===================== */
+        #mobileBottomNav, #mobileFAB, #mobileFormatBar, #mobileSidebarBackdrop, #mobileToolbarSheet { display: none; }
+        
+        @media (max-width: 767px) {
+            /* --- Core layout --- */
+            body { overflow: hidden; }
+            main { height: calc(100dvh - 56px) !important; padding-bottom: 56px; overflow: hidden; }
+            
+            /* --- Header → compact --- */
+            #mainHeader { height: 56px; padding: 0 14px; }
+            #mainHeader .desktop-only { display: none !important; }
+
+            /* --- Sidebar → fullscreen overlay drawer --- */
+            #notebooksSidebar {
+                position: fixed !important;
+                top: 56px; right: 0; bottom: 56px;
+                width: 88vw !important; max-width: 310px;
+                z-index: 200 !important;
+                transform: translateX(105%) !important;
+                transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+                box-shadow: -8px 0 32px rgba(0,0,0,0.18) !important;
+                border-left: 2px solid #000 !important;
+                overflow-y: auto;
+            }
+            #notebooksSidebar.mob-open { transform: translateX(0) !important; }
+            #mobileSidebarBackdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.28s; }
+            #mobileSidebarBackdrop.visible { opacity: 1; pointer-events: auto; }
+
+            /* --- Editor: full width, no outer padding --- */
+            #editorContainer { padding: 0 !important; width: 100% !important; }
+
+            /* --- Notebook view: edge-to-edge --- */
+            #view-notebook { max-width: 100% !important; border: none !important; border-radius: 0; box-shadow: none !important; }
+            #view-todo, #view-glossary, #view-calendar { border: none !important; box-shadow: none !important; max-width: 100% !important; }
+
+            /* --- Workspace header compact --- */
+            #workspaceHeader { padding: 6px 12px !important; }
+            #activeNotebookIcon { font-size: 1.2rem; }
+            #activeNotebookTitle { font-size: 0.95rem !important; }
+
+            /* --- Desktop toolbar → hidden; mobile format bar shown --- */
+            .editor-toolbar-row { display: none !important; }
+            #mobileFormatBar { display: flex !important; }
+
+            /* --- Paper: tighter padding for small screens --- */
+            #noteContent { padding-top: 12px !important; padding-bottom: 60px !important; min-height: 70vh !important; }
+            #noteContent.paper-rtl { padding-right: 48px !important; padding-left: 10px !important; }
+            #noteContent.paper-ltr { padding-left: 48px !important; padding-right: 10px !important; }
+            .paper-rtl::before { right: 40px !important; }
+            .paper-ltr::before { left: 40px !important; }
+
+            /* --- Dashboard compact --- */
+            #view-dashboard { padding: 20px 14px 80px !important; }
+            #view-dashboard .grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            #view-dashboard button { padding: 14px 8px !important; gap: 8px !important; }
+            #view-dashboard .text-lg { font-size: 0.8rem !important; }
+            #view-dashboard i[data-lucide] { width: 22px !important; height: 22px !important; }
+
+            /* --- Bottom nav --- */
+            #mobileBottomNav { display: flex !important; }
+
+            /* --- FAB --- */
+            #mobileFAB { display: flex !important; }
+
+            /* --- Mobile toolbar sheet --- */
+            #mobileToolbarSheet { display: block; position: fixed; bottom: 56px; left: 0; right: 0; background: #fff; border-top: 2px solid #000; z-index: 150; padding: 10px 12px 14px; transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); transform: translateY(100%); }
+            #mobileToolbarSheet.open { transform: translateY(0); }
+            #mobileToolbarSheet .sheet-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+            #mobileToolbarSheet button { display: flex; align-items: center; gap: 5px; padding: 7px 11px; border: 1.5px solid #000; font-size: 11px; font-weight: 700; background: #fff; flex-shrink: 0; }
+            #mobileToolbarSheet button:active { background: #f3f4f6; }
+            
+            /* --- Tab bar compact --- */
+            #pagesTabsContainer { overflow-x: auto; padding-top: 4px; }
+
+            /* --- Focus mode on mobile --- */
+            .focus-mode-active #mobileFormatBar { display: none !important; }
+            .focus-mode-active #pagesTabsContainer { display: none !important; }
+            .focus-mode-active #mobileBottomNav { display: none !important; }
+            .focus-mode-active main { padding-bottom: 0 !important; }
+        }
+
+        /* Mobile format bar & toolbar sheet — only styled when mobile query activates them */
+        #mobileFormatBar { align-items: center; background: #fff; border-top: 2px solid #000; border-bottom: 1px solid #e5e5e5; height: 46px; overflow-x: auto; gap: 2px; padding: 0 6px; flex-shrink: 0; position: sticky; top: 0; z-index: 30; }
+        #mobileFormatBar button { flex-shrink: 0; min-width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; border: none; background: transparent; }
+        #mobileFormatBar button:active { background: #e5e7eb; }
+        #mobileFormatBar .mob-sep { width: 1px; height: 22px; background: #d1d5db; flex-shrink: 0; margin: 0 2px; }
+    </style>
+</head>
+<body class="bg-zinc-50 text-black min-h-screen flex flex-col">
+
+    <!-- סרגל עליון ראשי -->
+    <header id="mainHeader" class="bg-white border-b-2 border-black px-6 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div class="flex items-center gap-3">
+            <!-- Mobile hamburger (sidebar toggle) -->
+            <button class="hidden max-md:flex items-center justify-center w-9 h-9 border-2 border-black bg-black text-white" onclick="toggleMobileSidebar()" title="תפריט">
+                <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+            <!-- Desktop logo -->
+            <div class="flex items-center gap-3 cursor-pointer hover:opacity-70 transition group desktop-only" onclick="toggleNotebooksSidebar()" title="הצג/הסתר סביבת מחברות">
+                <div class="border-2 border-black p-1.5 bg-black text-white group-hover:bg-zinc-800 transition">
+                    <i data-lucide="book" class="w-5 h-5"></i>
+                </div>
+                <h1 class="text-xl font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
+            </div>
+            <!-- Mobile logo (no click) -->
+            <h1 class="hidden max-md:block text-lg font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <button onclick="switchMainView('dashboard')" class="desktop-only text-xs font-bold hover:underline flex items-center gap-1"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> לוח בקרה ראשי</button>
+            <button onclick="openGlobalSearch()" class="hidden max-md:flex items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 transition" title="חיפוש"><i data-lucide="search" class="w-5 h-5"></i></button>
+            <span id="apiKeyStatusIndicator" class="desktop-only text-xs font-bold text-zinc-500 bg-zinc-100 border border-zinc-300 py-1 px-2.5 rounded-sm">Gemini AI</span>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden h-[calc(100vh-67px)] relative workspace-parent">
+
+        <!-- סביבת המחברות (הסיידבר) -->
+        <aside id="notebooksSidebar" class="w-64 bg-white border-l-2 border-black flex flex-col h-full z-30 transition-all duration-300 shrink-0 relative">
+            <div class="p-4 border-b-2 border-black">
+                <button onclick="openNewNotebookModal()" class="w-full flex items-center justify-center gap-2 bg-black text-white py-2.5 px-3 font-bold transition hover:opacity-80 text-sm">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>מחברת חדשה</span>
+                </button>
+            </div>
+
+            <div class="px-4 py-2 flex justify-between items-center bg-zinc-50 border-b border-zinc-200">
+                <span class="text-xs font-bold text-zinc-500 uppercase tracking-wider">המחברות שלי</span>
+                <button onclick="toggleNotebooksSidebar(true)" class="text-zinc-500 hover:text-black transition" title="הסתר סיידבר"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 no-scrollbar" id="notebooksList"></div>
+
+            <div id="sidebarToolContainer" class="flex flex-col border-t-2 border-black bg-zinc-50 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div class="p-2 border-b-2 border-black flex items-center bg-zinc-100">
+                    <span class="font-bold text-xs uppercase tracking-wider text-zinc-700">כלים מהירים</span>
+                </div>
+
+                <div class="overflow-y-auto max-h-[40vh] no-scrollbar flex flex-col">
+                    <!-- רשימת משימות מיני -->
+                    <div id="tool-todo-box" class="border-b border-zinc-200 block">
+                        <div onclick="toggleLocalToolCollapse('todo')" class="p-2 bg-white hover:bg-zinc-50 flex justify-between items-center cursor-pointer transition">
+                            <span class="font-bold text-xs text-zinc-800 flex items-center gap-1.5 relative"><i data-lucide="check-square" class="w-3.5 h-3.5 text-emerald-500"></i> משימות<span id="todoCountBadge" class="hidden ml-2 bg-emerald-600 text-white font-extrabold text-[9px] rounded-full w-4 h-4 items-center justify-center">0</span></span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="event.stopPropagation(); switchMainView('todo')" title="פתח במסך מלא" class="text-zinc-400 hover:text-black transition"><i data-lucide="maximize-2" class="w-3.5 h-3.5"></i></button>
+                                <i data-lucide="chevron-down" id="chevron-todo" class="w-3.5 h-3.5 text-zinc-500 transition-transform duration-300"></i>
+                            </div>
+                        </div>
+                        <div id="tool-todo-content" class="hidden p-3 bg-zinc-50 space-y-2 border-t border-zinc-100">
+                            <ul id="todoListQuick" class="space-y-1 max-h-36 overflow-y-auto no-scrollbar"></ul>
+                            <button onclick="switchMainView('todo')" class="w-full text-xs font-bold text-zinc-500 hover:text-black py-1">נהל משימות מתקדמות...</button>
+                        </div>
+                    </div>
+
+                    <!-- מילון מונחים מיני -->
+                    <div id="tool-glossary-box" class="border-b border-zinc-200 block">
+                        <div onclick="toggleLocalToolCollapse('glossary')" class="p-2 bg-white hover:bg-zinc-50 flex justify-between items-center cursor-pointer transition">
+                            <span class="font-bold text-xs text-zinc-800 flex items-center gap-1.5 relative"><i data-lucide="help-circle" class="w-3.5 h-3.5 text-purple-500"></i> מילון מושגים<span id="glossaryCountBadge" class="hidden ml-2 bg-purple-600 text-white font-extrabold text-[9px] rounded-full w-4 h-4 items-center justify-center">0</span></span>
+                            <div class="flex items-center gap-2">
+                                <button onclick="event.stopPropagation(); switchMainView('glossary')" title="פתח במסך מלא" class="text-zinc-400 hover:text-black transition"><i data-lucide="maximize-2" class="w-3.5 h-3.5"></i></button>
+                                <i data-lucide="chevron-down" id="chevron-glossary" class="w-3.5 h-3.5 text-zinc-500 transition-transform duration-300"></i>
+                            </div>
+                        </div>
+                        <div id="tool-glossary-content" class="hidden p-3 bg-zinc-50 space-y-2 text-xs border-t border-zinc-100">
+                            <input type="text" id="glossarySearchQuick" oninput="renderGlossaryQuick()" placeholder="חיפוש מהיר..." class="w-full px-2 py-1 border border-black outline-none mb-2">
+                            <div id="glossaryListQuick" class="space-y-1.5 max-h-28 overflow-y-auto no-scrollbar"></div>
+                            <div class="border-t border-zinc-200 pt-2 space-y-1">
+                                <input type="text" id="glossaryTermQuick" placeholder="מונח חדש..." class="w-full px-2 py-1 border border-zinc-300 outline-none text-[11px]">
+                                <input type="text" id="glossaryDefQuick" placeholder="הגדרה קצרה..." class="w-full px-2 py-1 border border-zinc-300 outline-none text-[11px]">
+                                <button onclick="addGlossaryTermQuick()" class="w-full py-1 bg-purple-600 text-white font-bold text-[10px] hover:bg-purple-700 transition">+ הוסף מונח</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- מחשבון -->
+                    <div id="tool-calculator-box" class="border-b border-zinc-200 block">
+                        <div onclick="toggleLocalToolCollapse('calculator')" class="p-2 bg-white hover:bg-zinc-50 flex justify-between items-center cursor-pointer transition">
+                            <span class="font-bold text-xs text-zinc-800 flex items-center gap-1.5"><i data-lucide="calculator" class="w-3.5 h-3.5 text-blue-500"></i> מחשבון/ממיר</span>
+                            <i data-lucide="chevron-down" id="chevron-calculator" class="w-3.5 h-3.5 text-zinc-500 transition-transform duration-300"></i>
+                        </div>
+                        <div id="tool-calculator-content" class="hidden p-3 bg-zinc-50 space-y-2 border-t border-zinc-100">
+                            <button onclick="toggleCalcMode()" class="text-[9px] font-bold border border-black py-0.5 hover:bg-zinc-200 bg-white w-full transition">החלף ל: <span id="calcModeName">ממיר יחידות</span></button>
+                            <div id="calculatorInterface" class="block">
+                                <input type="text" id="calcDisplay" readonly class="w-full text-left p-1 border border-black mb-1.5 text-sm font-bold bg-white outline-none mono-font" value="" dir="ltr">
+                                <div class="grid grid-cols-4 gap-1 mono-font text-[10px]">
+                                    <button onclick="calcInput('7')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">7</button><button onclick="calcInput('8')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">8</button><button onclick="calcInput('9')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">9</button><button onclick="calcInput('/')" class="p-1 bg-zinc-100 border border-black hover:bg-zinc-200 font-bold">/</button>
+                                    <button onclick="calcInput('4')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">4</button><button onclick="calcInput('5')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">5</button><button onclick="calcInput('6')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">6</button><button onclick="calcInput('*')" class="p-1 bg-zinc-100 border border-black hover:bg-zinc-200 font-bold">*</button>
+                                    <button onclick="calcInput('1')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">1</button><button onclick="calcInput('2')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">2</button><button onclick="calcInput('3')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">3</button><button onclick="calcInput('-')" class="p-1 bg-zinc-100 border border-black hover:bg-zinc-200 font-bold">-</button>
+                                    <button onclick="calcClear()" class="p-1 border border-black text-red-600 hover:bg-red-50 font-bold">C</button><button onclick="calcInput('0')" class="p-1 border border-black bg-white hover:bg-zinc-100 font-bold">0</button><button onclick="calcCalculate()" class="p-1 bg-black text-white border border-black hover:opacity-80 font-bold">=</button><button onclick="calcInput('+')" class="p-1 bg-zinc-100 border border-black hover:bg-zinc-200 font-bold">+</button>
+                                </div>
+                            </div>
+                            <div id="converterInterface" class="hidden space-y-1.5 text-[10px]">
+                                <select id="convCategory" onchange="setupConverterUnits()" class="w-full p-1 border border-black bg-white outline-none font-semibold"><option value="length">אורך</option><option value="weight">משקל</option><option value="temp">טמפרטורה</option></select>
+                                <div class="grid grid-cols-2 gap-1"><select id="convFromUnit" onchange="performConversion()" class="w-full p-1 border border-zinc-300 bg-white outline-none"></select><select id="convToUnit" onchange="performConversion()" class="w-full p-1 border border-zinc-300 bg-white outline-none"></select></div>
+                                <input type="number" id="convInputValue" oninput="performConversion()" value="1" class="w-full p-1 border border-black bg-white outline-none font-bold">
+                                <div class="p-1 border border-black bg-white font-bold text-center"><span id="convResult">תוצאה: -</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- הגדרות -->
+                    <div id="tool-settings-box" class="block">
+                        <div onclick="toggleLocalToolCollapse('settings')" class="p-2 bg-white hover:bg-zinc-50 flex justify-between items-center cursor-pointer transition">
+                            <span class="font-bold text-xs text-zinc-800 flex items-center gap-1.5"><i data-lucide="settings" class="w-3.5 h-3.5 text-zinc-500"></i> הגדרות</span>
+                            <i data-lucide="chevron-down" id="chevron-settings" class="w-3.5 h-3.5 text-zinc-500 transition-transform duration-300"></i>
+                        </div>
+                        <div id="tool-settings-content" class="hidden p-3 bg-zinc-50 space-y-3 border-t border-zinc-100 text-xs text-right">
+                            <div>
+                                <label class="block font-bold mb-1">מפתח Gemini API (לסיכומי AI):</label>
+                                <input type="password" id="settingsApiKey" class="w-full px-2 py-1.5 border border-zinc-300 bg-white outline-none" placeholder="הזן מפתח לסיכום AI...">
+                            </div>
+                            <div>
+                                <label class="block font-bold mb-1">כתובת יומן גוגל (Embed URL):</label>
+                                <input type="text" id="settingsGcalUrl" class="w-full px-2 py-1.5 border border-zinc-300 bg-white outline-none" placeholder="src=...">
+                            </div>
+                            <button onclick="saveSettings()" class="w-full py-1.5 mt-2 bg-black text-white font-bold rounded shadow-sm hover:bg-zinc-800 transition">שמור שינויים</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </aside>
+
+        <!-- אזור העבודה המרכזי (Dashboard, Notebook, Todo, Glossary, Calendar) -->
+        <!-- שינוי קריטי: הגדרת overflow-hidden למנוע קריסה של גובה הדף במחברת -->
+        <section class="flex-1 flex flex-col bg-zinc-100 overflow-hidden p-4 sm:p-6 relative" id="editorContainer">
+
+            <!-- V1. View: Dashboard -->
+            <div id="view-dashboard" class="flex-1 flex flex-col items-center justify-center text-center p-10 max-w-2xl mx-auto w-full">
+                <i data-lucide="book-open" class="w-16 h-16 text-zinc-300 mb-6"></i>
+                <h3 class="text-2xl font-bold uppercase tracking-wider text-black mb-8">ברוך הבא ל-ENOTE</h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+                    <button onclick="openNewNotebookModal()" class="p-5 border-2 border-black bg-white hover:bg-zinc-50 transition flex flex-col items-center gap-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                        <i data-lucide="pen-tool" class="w-8 h-8 text-black"></i>
+                        <span class="font-bold text-lg">מחברת חדשה</span>
+                    </button>
+                    <button onclick="switchMainView('calendar')" class="p-5 border-2 border-black bg-white hover:bg-zinc-50 transition flex flex-col items-center gap-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                        <i data-lucide="calendar" class="w-8 h-8 text-blue-500"></i>
+                        <span class="font-bold text-lg">יומן גוגל מלא</span>
+                    </button>
+                    <button onclick="switchMainView('todo')" class="p-5 border-2 border-black bg-white hover:bg-zinc-50 transition flex flex-col items-center gap-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                        <i data-lucide="list-todo" class="w-8 h-8 text-emerald-500"></i>
+                        <span class="font-bold text-lg">ניהול משימות מורחב</span>
+                    </button>
+                    <button onclick="switchMainView('glossary')" class="p-5 border-2 border-black bg-white hover:bg-zinc-50 transition flex flex-col items-center gap-3 shadow-[4px_4px_0_0_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                        <i data-lucide="library" class="w-8 h-8 text-purple-500"></i>
+                        <span class="font-bold text-lg">מילון מונחים</span>
+                    </button>
+                </div>
+
+                <!-- כרטיסי חזרה יומית מהמילון -->
+                <div id="dashboardReviewSection" class="hidden mt-8 w-full text-right">
+                    <h4 class="text-sm font-bold uppercase tracking-wider text-zinc-500 mb-3 flex items-center gap-2"><i data-lucide="brain" class="w-4 h-4"></i> חזרה יומית - 3 מונחים</h4>
+                    <div id="dashboardReviewCards" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+                </div>
+            </div>
+
+            <!-- V2. View: Notebook Workspace -->
+            <!-- תיקון קריטי: שינוי ה-ID ל-view-notebook לזיהוי ותצוגה מלאה ללא כיווץ -->
+            <div id="view-notebook" class="hidden flex-1 flex flex-col w-full max-w-5xl mx-auto border-2 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)] relative transition-all duration-350">
+                <button id="exitFocusModeBtn" onclick="toggleFocusMode(false)" class="hidden absolute top-6 z-50 w-9 h-9 bg-white border-2 border-red-300 hover:bg-red-50 text-red-500 rounded-full flex items-center justify-center shadow-md transition-all duration-150" title="צא ממצב ריכוז"><i data-lucide="eye-off" class="w-4.5 h-4.5"></i></button>
+
+                <div id="workspaceHeader" class="bg-zinc-50 p-3 border-b-2 border-black flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <span id="activeNotebookIcon" class="text-2xl flex-shrink-0">📓</span>
+                        <h2 id="activeNotebookTitle" class="text-lg font-bold text-black uppercase tracking-tight">שם המחברת</h2>
+                        <button onclick="editNotebookTitle()" class="p-1 hover:bg-zinc-200 transition rounded"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="focusModeBtn" onclick="toggleFocusMode(true)" class="flex items-center gap-1.5 px-3 py-1.5 border-2 border-black bg-white text-black text-xs font-bold hover:bg-zinc-100 transition"><i data-lucide="eye" class="w-4 h-4"></i><span>מצב ריכוז</span></button>
+                        <button onclick="deleteActiveNotebook()" class="text-red-500 hover:bg-red-50 p-1.5 rounded transition flex items-center gap-1 text-xs font-bold"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+
+                <div class="editor-toolbar-row p-2 border-b-2 border-black flex flex-wrap gap-2 items-center bg-white z-30 font-sans">
+                    <div class="flex items-center border border-black bg-white">
+                        <button onclick="setPageDirection('rtl')" id="btnDirRTL" class="px-2 py-1 hover:bg-zinc-200 transition" title="עברית"><i data-lucide="align-right" class="w-4 h-4"></i></button>
+                        <span class="w-px h-4 bg-zinc-300"></span>
+                        <button onclick="setPageDirection('ltr')" id="btnDirLTR" class="px-2 py-1 hover:bg-zinc-200 transition" title="אנגלית"><i data-lucide="align-left" class="w-4 h-4"></i></button>
+                    </div><span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                    <div class="flex items-center border border-black bg-white">
+                        <button onclick="changePageType('ruled')" id="btnTypeRuled" class="px-2 py-1 text-xs font-bold hover:bg-zinc-200 transition">שורות</button><span class="w-px h-4 bg-zinc-300"></span>
+                        <button onclick="changePageType('grid')" id="btnTypeGrid" class="px-2 py-1 text-xs font-bold hover:bg-zinc-200 transition">משבצות</button><span class="w-px h-4 bg-zinc-300"></span>
+                        <button onclick="changePageType('canvas')" id="btnTypeCanvas" class="px-2 py-1 text-xs font-bold hover:bg-zinc-200 transition" title="לוח שרטוט">שרטוט</button>
+                    </div><span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                    <div class="flex items-center border border-black bg-white">
+                        <button onclick="formatBlock('h1')" class="px-2.5 py-1 text-xs font-extrabold hover:bg-zinc-200 transition">H1</button><span class="w-px h-4 bg-zinc-300"></span>
+                        <button onclick="formatBlock('h2')" class="px-2.5 py-1 text-xs font-bold hover:bg-zinc-200 transition">H2</button><span class="w-px h-4 bg-zinc-300"></span>
+                        <button onclick="formatBlock('p')" class="px-2.5 py-1 text-xs hover:bg-zinc-200 transition">P</button>
+                    </div><span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                    <div class="flex items-center border border-black bg-white">
+                        <button onclick="changeZoom(1)" class="px-2 py-1 hover:bg-zinc-200 transition font-bold text-sm">A+</button><span class="w-px h-4 bg-zinc-300"></span>
+                        <button onclick="changeZoom(-1)" class="px-2 py-1 hover:bg-zinc-200 transition font-bold text-sm">A-</button>
+                    </div><span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                    <div class="flex items-center">
+                        <button onclick="formatDoc('bold')" class="px-2 py-1 font-extrabold hover:bg-zinc-200 transition">B</button>
+                        <button onclick="formatDoc('italic')" class="px-2 py-1 italic hover:bg-zinc-200 transition">I</button>
+                        <button onclick="formatDoc('underline')" class="px-2 py-1 underline hover:bg-zinc-200 transition">U</button>
+                    </div><span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                    <div class="flex items-center gap-1 bg-white p-1 border border-black">
+                        <button onclick="highlightText('#fef08a')" class="w-4 h-4 bg-[#fef08a] border border-black/20" title="צהוב"></button><button onclick="highlightText('#bbf7d0')" class="w-4 h-4 bg-[#bbf7d0] border border-black/20" title="ירוק"></button><button onclick="highlightText('#bfdbfe')" class="w-4 h-4 bg-[#bfdbfe] border border-black/20" title="תכלת"></button><button onclick="highlightText('#fbcfe8')" class="w-4 h-4 bg-[#fbcfe8] border border-black/20" title="ורוד"></button><button onclick="highlightText('transparent')" class="w-4 h-4 bg-white flex items-center justify-center text-red-500" title="הסר מרקר"><i data-lucide="x" class="w-3 h-3"></i></button>
+                    </div>
+                    <div class="flex-1 flex justify-end gap-2 items-center"></div>
+
+                    <input type="file" id="aiFileInput" accept=".pdf,.docx,.txt" class="hidden" onchange="handleAIFileUpload(event)">
+                    <!-- תיקון קריטי: כפתור ההעלאה חזר להיות כפתור "העלאה" במקום סיכום AI -->
+                    <button onclick="document.getElementById('aiFileInput').click()" class="flex items-center gap-1.5 px-3 py-1 border border-black bg-white hover:bg-zinc-100 text-xs font-bold transition" title="העלה קובץ (PDF/Word/TXT) לסיכום וייבוא">
+                        <i data-lucide="upload" class="w-3.5 h-3.5 text-zinc-700"></i>
+                        <span>העלאה</span>
+                    </button>
+                    
+                    <div class="relative inline-block text-left" id="downloadDropdownContainer">
+                        <button onclick="toggleDownloadDropdown(event)" class="flex items-center gap-1.5 px-3 py-1 border border-black bg-zinc-50 text-xs font-bold hover:bg-zinc-200 transition">
+                            <i data-lucide="download" class="w-3.5 h-3.5 text-zinc-700"></i><span>הורד</span><i data-lucide="chevron-down" class="w-3 h-3 text-zinc-500 transition-transform duration-150"></i>
+                        </button>
+                        <div id="downloadDropdown" class="hidden absolute left-0 mt-1 w-44 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] z-[100] text-right">
+                            <button onclick="savePageAsImage()" class="w-full text-right px-4 py-2.5 text-xs font-bold hover:bg-zinc-100 flex items-center gap-2 border-b border-zinc-200"><i data-lucide="image" class="w-3.5 h-3.5 text-zinc-500"></i> תמונה (PNG)</button>
+                            <button onclick="savePageAsPDF()" class="w-full text-right px-4 py-2.5 text-xs font-bold hover:bg-zinc-100 flex items-center gap-2 border-b border-zinc-200"><i data-lucide="file-text" class="w-3.5 h-3.5 text-zinc-500"></i> מסמך PDF</button>
+                            <button onclick="savePageAsWord()" class="w-full text-right px-4 py-2.5 text-xs font-bold hover:bg-zinc-100 flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-zinc-500"></i> קובץ Word</button>
+                        </div>
+                    </div>
+                    <button onclick="insertCodeBlock()" class="flex items-center gap-1.5 px-3 py-1 border border-black bg-zinc-50 text-xs font-bold hover:bg-zinc-200 transition" title="קוד"><i data-lucide="code" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">קוד</span></button>
+                    <button onmousedown="event.preventDefault(); captureGlossarySelection();" onclick="addSelectionToGlossary()" class="flex items-center gap-1.5 px-3 py-1 border border-black bg-zinc-50 text-xs font-bold hover:bg-zinc-200 transition" title="הוסף מילה/מונח נבחר למילון"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">מונח</span></button>
+                    <button onclick="openVersionHistory()" class="flex items-center gap-1.5 px-3 py-1 border border-black bg-zinc-50 text-xs font-bold hover:bg-zinc-200 transition" title="היסטוריית גרסאות"><i data-lucide="history" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">היסטוריה</span></button>
+                    <button onclick="openGlobalSearch()" class="flex items-center gap-1.5 px-3 py-1 border border-black bg-zinc-50 text-xs font-bold hover:bg-zinc-200 transition" title="חיפוש כללי (Ctrl+F)"><i data-lucide="search" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">חיפוש</span></button>
+                </div>
+
+                <div class="bg-zinc-200/50 border-b-2 border-black px-2 pt-1 flex items-end gap-1 overflow-x-auto no-scrollbar" id="pagesTabsContainer"></div>
+
+                <!-- Mobile Format Bar (shown only on mobile, replaces desktop toolbar) -->
+                <div id="mobileFormatBar">
+                    <button onclick="setPageDirection('rtl')" title="RTL" class="text-xs font-black">א</button>
+                    <button onclick="setPageDirection('ltr')" title="LTR" class="text-xs font-black">A</button>
+                    <div class="mob-sep"></div>
+                    <button onclick="formatDoc('bold')" title="מודגש"><b class="text-sm">B</b></button>
+                    <button onclick="formatDoc('italic')" title="נטוי"><i class="text-sm">I</i></button>
+                    <button onclick="formatDoc('underline')" title="קו תחתון"><u class="text-sm">U</u></button>
+                    <div class="mob-sep"></div>
+                    <button onclick="formatBlock('h1')" title="כותרת" class="text-xs font-black">H1</button>
+                    <button onclick="formatBlock('h2')" title="כותרת משנה" class="text-xs font-black">H2</button>
+                    <div class="mob-sep"></div>
+                    <button onclick="highlightText('#fef08a')" title="סמן" style="font-size:16px;">🖊</button>
+                    <button onclick="highlightText('transparent')" title="הסר סימון" class="text-red-500 text-xs font-bold">✕</button>
+                    <div class="mob-sep"></div>
+                    <button onclick="startVoiceInput()" title="קלט קולי" id="voiceBtn"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                    <div class="mob-sep"></div>
+                    <button onclick="toggleMobileToolbarSheet()" title="עוד אפשרויות" class="text-zinc-600 font-black text-lg px-2">⋯</button>
+                </div>
+
+                <!-- Mobile Toolbar Sheet (slide-up panel with extra tools) -->
+                <div id="mobileToolbarSheet">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-black uppercase tracking-wider text-zinc-500">כלים נוספים</span>
+                        <button onclick="toggleMobileToolbarSheet()" class="text-zinc-400 text-lg font-bold leading-none">×</button>
+                    </div>
+                    <div class="sheet-row">
+                        <button onclick="changePageType('ruled'); toggleMobileToolbarSheet()"><i data-lucide="align-left" class="w-3.5 h-3.5"></i> שורות</button>
+                        <button onclick="changePageType('grid'); toggleMobileToolbarSheet()"><i data-lucide="grid" class="w-3.5 h-3.5"></i> משבצות</button>
+                        <button onclick="changePageType('canvas'); toggleMobileToolbarSheet()"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> שרטוט</button>
+                    </div>
+                    <div class="sheet-row">
+                        <button onclick="changeZoom(1); toggleMobileToolbarSheet()"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i> A+</button>
+                        <button onclick="changeZoom(-1); toggleMobileToolbarSheet()"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i> A-</button>
+                        <button onclick="insertCodeBlock(); toggleMobileToolbarSheet()"><i data-lucide="code" class="w-3.5 h-3.5"></i> קוד</button>
+                    </div>
+                    <div class="sheet-row">
+                        <button onmousedown="event.preventDefault(); captureGlossarySelection();" onclick="addSelectionToGlossary(); toggleMobileToolbarSheet()"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i> מונח</button>
+                        <button onclick="openVersionHistory(); toggleMobileToolbarSheet()"><i data-lucide="history" class="w-3.5 h-3.5"></i> היסטוריה</button>
+                        <button onclick="document.getElementById('aiFileInput').click(); toggleMobileToolbarSheet()"><i data-lucide="upload" class="w-3.5 h-3.5"></i> העלאה</button>
+                        <button onclick="savePageAsPDF(); toggleMobileToolbarSheet()"><i data-lucide="download" class="w-3.5 h-3.5"></i> PDF</button>
+                    </div>
+                </div>
+                
+                <div id="paperWrapper" class="flex-1 relative overflow-hidden bg-zinc-100">
+                    <!-- הוספת לכידת לחיצה לגוף הדף להבטחת כתיבה ופוקוס מלאים בכל מקום -->
+                    <div id="paperSheet" class="absolute inset-0 overflow-y-auto bg-zinc-50 cursor-text" onclick="if(!event.target.closest('.code-block-container')) document.getElementById('noteContent').focus()">
+                        <div id="noteContent" contenteditable="true" class="dir-rtl ruled-paper paper-rtl"></div>
+                    </div>
+                    <!-- לוח שרטוט -->
+                    <div id="canvasSheet" class="hidden absolute inset-0 overflow-y-auto bg-white">
+                        <div class="sticky top-0 z-20 bg-zinc-50 border-b border-zinc-300 p-2 flex items-center gap-2 flex-wrap">
+                            <span class="text-xs font-bold ml-1">צבע:</span>
+                            <button onclick="setCanvasTool('#000000')" class="w-6 h-6 rounded-full bg-black border-2 border-zinc-300 canvas-color-btn" data-color="#000000"></button>
+                            <button onclick="setCanvasTool('#ef4444')" class="w-6 h-6 rounded-full bg-red-500 border-2 border-zinc-300 canvas-color-btn" data-color="#ef4444"></button>
+                            <button onclick="setCanvasTool('#3b82f6')" class="w-6 h-6 rounded-full bg-blue-500 border-2 border-zinc-300 canvas-color-btn" data-color="#3b82f6"></button>
+                            <button onclick="setCanvasTool('#22c55e')" class="w-6 h-6 rounded-full bg-green-500 border-2 border-zinc-300 canvas-color-btn" data-color="#22c55e"></button>
+                            <span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                            <button onclick="setCanvasMode('pen')" id="canvasPenBtn" class="px-2.5 py-1 border border-black bg-zinc-200 text-xs font-bold flex items-center gap-1"><i data-lucide="pencil" class="w-3.5 h-3.5"></i>עיפרון</button>
+                            <button onclick="setCanvasMode('eraser')" id="canvasEraserBtn" class="px-2.5 py-1 border border-black bg-white text-xs font-bold flex items-center gap-1"><i data-lucide="eraser" class="w-3.5 h-3.5"></i>מחק</button>
+                            <span class="w-px h-5 bg-zinc-300 mx-1"></span>
+                            <label class="text-xs font-bold">עובי:</label>
+                            <input type="range" id="canvasWidth" min="1" max="20" value="3" class="w-20">
+                            <button onclick="clearCanvas()" class="px-2.5 py-1 border border-red-400 text-red-500 text-xs font-bold hover:bg-red-50 flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i>נקה</button>
+                        </div>
+                        <canvas id="drawCanvas" class="block bg-white" width="1200" height="1600" style="touch-action:none; cursor:crosshair;"></canvas>
+                    </div>
+                    <!-- תפריט אוטוקומפליט לקישור בין דפים [[ -->
+                    <div id="linkAutocomplete" class="hidden absolute z-50 bg-white border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] w-64 max-h-56 overflow-y-auto text-sm"></div>
+                </div>
+            </div>
+
+            <!-- V3. View: Full Screen Todo List -->
+            <div id="view-todo" class="hidden flex-1 flex-col w-full max-w-5xl mx-auto border-2 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)] relative transition-all duration-350">
+                <div class="bg-emerald-50 p-4 border-b-2 border-black flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="list-todo" class="w-6 h-6 text-emerald-600"></i>
+                        <h2 class="text-xl font-bold text-emerald-900 uppercase tracking-tight">ניהול משימות מתקדם</h2>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="todoSortSelect" onchange="renderTodosFull()" class="px-2 py-1 text-sm border-2 border-black bg-white font-bold outline-none">
+                            <option value="date">מיין לפי תאריך יעד</option>
+                            <option value="urgency">מיין לפי דחיפות</option>
+                            <option value="subject">מיין לפי מקצוע/נושא</option>
+                        </select>
+                        <button onclick="switchMainView('dashboard')" class="text-zinc-500 hover:text-black transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    </div>
+                </div>
+                
+                <div class="p-4 bg-zinc-50 border-b-2 border-black flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-[200px]">
+                        <label class="block text-xs font-bold mb-1">תיאור המשימה</label>
+                        <input type="text" id="fullTodoInput" class="w-full px-3 py-2 border-2 border-black bg-white outline-none" placeholder="מה צריך לעשות?">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">נושא / מקצוע</label>
+                        <input type="text" id="fullTodoSubject" class="w-32 px-3 py-2 border-2 border-black bg-white outline-none" placeholder="למשל: מדמ״ח">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">תאריך יעד</label>
+                        <input type="date" id="fullTodoDate" class="w-36 px-3 py-2 border-2 border-black bg-white outline-none font-mono text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold mb-1">דחיפות</label>
+                        <select id="fullTodoUrgency" class="w-28 px-3 py-2 border-2 border-black bg-white outline-none font-bold">
+                            <option value="normal" class="text-blue-600">רגילה</option>
+                            <option value="high" class="text-red-600">דחופה!</option>
+                            <option value="low" class="text-emerald-600">נמוכה</option>
+                        </select>
+                    </div>
+                    <button onclick="addFullTodoItem()" class="px-6 py-2 bg-emerald-600 text-white font-bold border-2 border-black hover:bg-emerald-700 transition">הוסף משימה</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 bg-zinc-100">
+                    <div id="fullTodoListContainer" class="space-y-3">
+                        <!-- Full tasks rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- V4. View: Full Screen Glossary (Alphabetical Accordion) -->
+            <div id="view-glossary" class="hidden flex-1 flex-col w-full max-w-5xl mx-auto border-2 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)] relative transition-all duration-350">
+                <div class="bg-purple-50 p-4 border-b-2 border-black flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="library" class="w-6 h-6 text-purple-600"></i>
+                        <h2 class="text-xl font-bold text-purple-900 uppercase tracking-tight">מילון מונחים אקדמי</h2>
+                    </div>
+                    <button onclick="switchMainView('dashboard')" class="text-zinc-500 hover:text-black transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <div class="p-4 bg-zinc-50 border-b-2 border-black flex flex-wrap gap-3 items-end">
+                    <div class="flex-1 min-w-[160px]">
+                        <label class="block text-xs font-bold mb-1">חפש מונח או פירוש</label>
+                        <input type="text" id="fullGlossarySearch" oninput="renderGlossaryFull()" placeholder="חפש במאגר..." class="w-full px-4 py-2 border-2 border-black bg-white outline-none font-bold text-sm">
+                    </div>
+                    <div class="flex-1 min-w-[140px]">
+                        <label class="block text-xs font-bold mb-1">מונח חדש</label>
+                        <input type="text" id="glossaryTerm" placeholder="שם המונח..." class="w-full px-3 py-2 border-2 border-black bg-white outline-none text-sm">
+                    </div>
+                    <div class="flex-1 min-w-[160px]">
+                        <label class="block text-xs font-bold mb-1">הגדרה</label>
+                        <input type="text" id="glossaryDef" placeholder="הגדרה אקדמית..." class="w-full px-3 py-2 border-2 border-black bg-white outline-none text-sm">
+                    </div>
+                    <button onclick="addGlossaryTerm()" class="px-5 py-2 bg-purple-600 text-white font-bold border-2 border-black hover:bg-purple-700 transition text-sm">הוסף מונח</button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 bg-zinc-100">
+                    <div class="flex flex-col gap-3" id="fullGlossaryContainer">
+                        <!-- Glossary accordion rendered here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- V5. View: Google Calendar Full Screen -->
+            <div id="view-calendar" class="hidden flex-1 flex-col w-full max-w-5xl mx-auto border-2 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)] relative transition-all duration-350">
+                <div class="bg-blue-50 p-4 border-b-2 border-black flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="calendar" class="w-6 h-6 text-blue-600"></i>
+                        <h2 class="text-xl font-bold text-blue-900 uppercase tracking-tight">יומן גוגל (Google Calendar)</h2>
+                    </div>
+                    <button onclick="switchMainView('dashboard')" class="text-zinc-500 hover:text-black transition"><i data-lucide="x" class="w-6 h-6"></i></button>
+                </div>
+                <div class="flex-1 bg-zinc-100 flex flex-col p-4 relative" id="googleCalendarContainer">
+                    <!-- Google Calendar Iframe or Info Message goes here -->
+                </div>
+            </div>
+
+            <!-- פח אשפה מונפש תלת-ממדי מינימליסטי -->
+            <div id="trashBin" class="hidden absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center z-50 pointer-events-none transition-all duration-300 opacity-0 scale-90">
+                <div id="trashBinInner" class="flex flex-col items-center">
+                    <!-- מכסה הפח הפיזי שמתרומם ונסגר -->
+                    <svg id="trashLid" class="w-32 h-10 transition-transform duration-350 origin-bottom-left" viewBox="0 0 80 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="34" y="2" width="12" height="4" rx="1" stroke="black" stroke-width="2.5" fill="white"/>
+                        <path d="M4 18H76V12C76 10.8954 75.1046 10 74 10H6C4.89543 10 4 10.8954 4 12V18Z" stroke="black" stroke-width="2.5" fill="white"/>
+                    </svg>
+                    <!-- גוף הפח הפיזי -->
+                    <svg class="w-28 h-36 -mt-2" viewBox="0 0 64 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 2H60L50 78H14L4 2Z" stroke="black" stroke-width="2.5" fill="white"/>
+                        <line x1="20" y1="10" x2="24" y2="70" stroke="black" stroke-width="2.5" stroke-dasharray="2 2"/>
+                        <line x1="32" y1="10" x2="32" y2="70" stroke="black" stroke-width="2.5" stroke-dasharray="2 2"/>
+                        <line x1="44" y1="10" x2="40" y2="70" stroke="black" stroke-width="2.5" stroke-dasharray="2 2"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- מסך טעינה - מד התקדמות נקי ושקט -->
+            <div id="aiLoadingOverlay" class="fixed inset-0 bg-white/95 z-[100] hidden items-center justify-center flex-col">
+                <i data-lucide="file-text" class="w-8 h-8 text-black mb-4 animate-pulse"></i>
+                <h3 id="aiLoadingText" class="font-bold text-lg text-black mb-3">מעבד את הקובץ...</h3>
+                
+                <!-- Progress Bar -->
+                <div class="w-64 h-2 bg-zinc-200 rounded-full overflow-hidden mb-2 relative">
+                    <div id="aiProgressBar" class="absolute top-0 left-0 h-full bg-black rounded-full w-0 transition-all duration-350"></div>
+                </div>
+            </div>
+
+            <!-- חלונית אישור מותאמת אישית לביטול alerts ו-confirms -->
+            <div id="confirmModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[250] p-4 font-sans">
+                <div class="bg-white p-6 w-full max-w-sm border-2 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] text-right">
+                    <h3 id="confirmTitle" class="text-lg font-bold uppercase mb-2">אישור פעולה</h3>
+                    <p id="confirmText" class="text-xs text-zinc-600 mb-6 font-semibold"></p>
+                    <div class="flex justify-end gap-2">
+                        <button id="confirmCancelBtn" class="px-4 py-2 text-xs font-bold hover:bg-zinc-200 border border-transparent">ביטול</button>
+                        <button id="confirmApproveBtn" class="px-5 py-2 text-xs font-bold border-2 border-black bg-black text-white">אישור</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- קונטיינר התראות צפות (Toasts) -->
+            <div id="toastContainer" class="fixed bottom-6 right-6 z-[300] flex flex-col gap-2 pointer-events-none"></div>
+
+        </section>
+
+    </main>
+
+    <!-- מודל יצירה -->
+    <div id="createModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white p-6 w-full max-w-sm border-2 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <h3 id="modalTitle" class="text-lg font-bold uppercase mb-4 border-b-2 border-black pb-2">יצירת מחברת חדשה</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold mb-1">שם</label>
+                    <input type="text" id="createInput" class="w-full px-3 py-2 border-2 border-black bg-white outline-none focus:ring-1 focus:ring-black">
+                </div>
+                <div id="notebookIconPickerRow">
+                    <label class="block text-xs font-bold mb-2">אייקון / נושא</label>
+                    <div class="grid grid-cols-8 gap-1.5" id="iconPickerGrid">
+                    </div>
+                    <input type="hidden" id="selectedNotebookIcon" value="📓">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">סוג דף ראשון</label>
+                    <select id="createType" class="w-full px-3 py-2 border-2 border-black bg-white outline-none">
+                        <option value="ruled">שורות</option>
+                        <option value="grid">משבצות</option>
+                        <option value="canvas">לוח שרטוט</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-2">
+                <button onclick="closeCreateModal()" class="px-4 py-2 text-xs font-bold hover:bg-zinc-200 border border-transparent">ביטול</button>
+                <button onclick="handleCreateSubmit()" class="px-5 py-2 text-xs font-bold border-2 border-black bg-black text-white">צור</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- מודל הוספת מונח לגלוסרי -->
+    <div id="glossaryAddModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[260] p-4">
+        <div class="bg-white p-6 w-full max-w-md border-2 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <h3 class="text-lg font-bold uppercase mb-1 border-b-2 border-black pb-2">הוסף מונח למילון</h3>
+            <p class="text-xs text-zinc-500 mb-4 font-semibold">ניתוח AI הושלם. ערוך לפי הצורך ואשר.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-bold mb-1">מונח</label>
+                    <input type="text" id="glossaryModalTerm" class="w-full px-3 py-2 border-2 border-black bg-white outline-none text-sm font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold mb-1">הגדרה (ערוך לפי הצורך)</label>
+                    <textarea id="glossaryModalDef" rows="4" class="w-full px-3 py-2 border-2 border-black bg-white outline-none text-sm resize-none leading-relaxed"></textarea>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end gap-2">
+                <button onclick="closeGlossaryAddModal()" class="px-4 py-2 text-xs font-bold hover:bg-zinc-200 border border-transparent">ביטול</button>
+                <button onclick="confirmGlossaryAdd()" class="px-5 py-2 text-xs font-bold border-2 border-black bg-black text-white hover:bg-zinc-800">הוסף למילון</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- חיפוש כללי -->
+    <div id="globalSearchOverlay" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[270] p-4" onclick="if(event.target===this) closeGlobalSearch()">
+        <div class="bg-white w-full max-w-lg border-2 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)] mt-20" onclick="event.stopPropagation()">
+            <div class="p-3 border-b-2 border-black flex items-center gap-2">
+                <i data-lucide="search" class="w-5 h-5 text-zinc-500"></i>
+                <input type="text" id="globalSearchInput" oninput="performGlobalSearch()" placeholder="חפש בכל המחברות..." class="flex-1 outline-none text-lg font-bold">
+                <button onclick="closeGlobalSearch()" class="text-zinc-400 hover:text-black"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div id="globalSearchResults" class="max-h-80 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- היסטוריית גרסאות -->
+    <div id="versionHistoryModal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[270] p-4">
+        <div class="bg-white p-6 w-full max-w-md border-2 border-black shadow-[8px_8px_0_0_rgba(0,0,0,1)]">
+            <h3 class="text-lg font-bold uppercase mb-1 border-b-2 border-black pb-2 flex items-center gap-2"><i data-lucide="history" class="w-5 h-5"></i> היסטוריית גרסאות</h3>
+            <p class="text-xs text-zinc-500 mb-3 font-semibold">שמורות גרסאות קודמות של הדף הזה. שחזור ימחק שינויים שלא נשמרו.</p>
+            <div id="versionHistoryList" class="space-y-2 max-h-72 overflow-y-auto"></div>
+            <div class="mt-5 flex justify-end gap-2">
+                <button onclick="closeVersionHistory()" class="px-4 py-2 text-xs font-bold hover:bg-zinc-200 border border-transparent">סגור</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let notebooks = [];
+        let activeNotebookId = null;
+        let activePageId = null;
+        let zoomLevel = 0;
+        let limitNotebooks = true;
+
+        let todoItems = []; // Structure: { id, text, completed, date, urgency, subject }
+        let glossaryTerms = []; // Structure: { id, term, def, expandedDef }
+        let isCalcMode = true;
+
+        let historyStack = [], redoStack = [], isWriting = false;
+
+        let createMode = 'notebook'; 
+        let isFocusMode = false;
+        let progressInterval = null;
+        let wasSidebarOpenBeforeFocus = true;
+
+        let currentMainView = 'dashboard'; 
+
+        const conversionRates = { length: { m: 1, km: 1000, cm: 0.01, in: 0.0254, ft: 0.3048 }, weight: { kg: 1, g: 0.001, lb: 0.45359237, oz: 0.0283495231 } };
+        const conversionLabels = { length: { m: 'מטר (m)', km: 'ק"מ (km)', cm: 'ס"מ (cm)', in: 'אינץ\' (in)', ft: 'רגל (ft)' }, weight: { kg: 'ק"ג (kg)', g: 'גרם (g)', lb: 'פאונד (lb)', oz: 'אונקיה (oz)' }, temp: { c: 'צלזיוס (°C)', f: 'פרנהייט (°F)', k: 'קלווין (K)' } };
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            
+            // רישום Service Worker לתמיכה אופליין (PWA)
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(() => { /* טעינה מ-file:// או ללא תמיכה - מתעלמים בשקט */ });
+            }
+            
+            // גישה ישירה ללא התחברות
+            document.getElementById('mainHeader').classList.remove('hidden');
+            document.getElementById('notebooksSidebar').classList.remove('hidden');
+
+            loadData();
+            
+            const editor = document.getElementById('noteContent');
+            editor.addEventListener('paste', (e) => { e.preventDefault(); const text = (e.originalEvent || e).clipboardData.getData('text/plain'); document.execCommand('insertText', false, text); });
+            editor.addEventListener('input', () => { if (!isWriting) { isWriting = true; setTimeout(() => { saveHistoryState(); isWriting = false; }, 500); } savePageData(); handleEditorInputForLinks(); });
+            editor.addEventListener('keyup', () => { handleEditorInputForLinks(); });
+            editor.addEventListener('click', (e) => {
+                const link = e.target.closest('.page-link');
+                if (link) { e.preventDefault(); e.stopPropagation(); navigateToPageLink(link.dataset.nbId, link.dataset.pageId); }
+            });
+            editor.addEventListener('blur', () => { setTimeout(hideLinkAutocomplete, 150); });
+            
+            editor.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    const sel = window.getSelection();
+                    if(sel.rangeCount > 0) {
+                        const range = sel.getRangeAt(0);
+                        const isCode = range.commonAncestorContainer.nodeName === 'CODE' || (range.commonAncestorContainer.parentElement && range.commonAncestorContainer.parentElement.nodeName === 'CODE');
+                        if (isCode) { e.preventDefault(); document.execCommand('insertText', false, '    '); }
+                    }
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                const keyLower = e.key ? e.key.toLowerCase() : '';
+                const isQ = e.code === 'KeyQ' || keyLower === 'q';
+                if (e.ctrlKey && e.shiftKey && isQ && currentMainView === 'notebook') { e.preventDefault(); deleteActiveNotebook(); } 
+                else if (e.ctrlKey && !e.shiftKey && isQ) { e.preventDefault(); openNewNotebookModal(); }
+                if (e.ctrlKey && keyLower === 'z' && currentMainView === 'notebook') { e.preventDefault(); undo(); }
+                if (e.ctrlKey && keyLower === 'y' && currentMainView === 'notebook') { e.preventDefault(); redo(); }
+                if (e.ctrlKey && keyLower === 'f') { e.preventDefault(); openGlobalSearch(); }
+                if (e.key === 'Escape') {
+                    hideLinkAutocomplete();
+                    closeGlobalSearch(); closeVersionHistory(); closeGlossaryAddModal();
+                }
+            });
+
+            document.getElementById('createInput').addEventListener('keypress', function(e) { if (e.key === 'Enter') handleCreateSubmit(); });
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('fullTodoDate').value = todayStr;
+            const savedGcal = localStorage.getItem('enote_gcal_url');
+            if(savedGcal) document.getElementById('settingsGcalUrl').value = savedGcal;
+            const savedKey = localStorage.getItem('enote_user_key');
+            if(savedKey) document.getElementById('settingsApiKey').value = savedKey;
+
+            renderNotebooks(); renderTodosQuick(); renderGlossaryQuick(); setupConverterUnits(); updateAllVisualIndicators();
+            switchMainView('dashboard');
+        });
+
+        /* --- View Controller --- */
+        function switchMainView(viewName) {
+            const views = ['dashboard', 'notebook', 'todo', 'glossary', 'calendar'];
+            views.forEach(v => {
+                const el = document.getElementById('view-' + v);
+                if (el) {
+                    if (v === viewName) {
+                        el.classList.remove('hidden');
+                        if (v !== 'notebook') el.classList.add('flex');
+                    } else {
+                        el.classList.add('hidden');
+                        if (v !== 'notebook') el.classList.remove('flex');
+                    }
+                }
+            });
+            currentMainView = viewName;
+            
+            if (viewName === 'todo') renderTodosFull();
+            if (viewName === 'glossary') renderGlossaryFull();
+            if (viewName === 'calendar') renderCalendar();
+            if (viewName === 'dashboard') renderDashboardReview();
+            if (viewName === 'notebook') updateView();
+            
+            updateMobileNavHighlight && updateMobileNavHighlight(viewName);
+            lucide.createIcons();
+        }
+
+        /* --- מערכת התראות ודיאלוגים --- */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer'); if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'p-3 border-2 border-black bg-white shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex items-center gap-2 text-xs font-bold transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto';
+            let icon = 'info'; let color = 'text-blue-500';
+            if (type === 'success') { icon = 'check-circle'; color = 'text-emerald-500'; }
+            else if (type === 'error') { icon = 'alert-triangle'; color = 'text-red-500'; }
+            toast.innerHTML = '<i data-lucide="' + icon + '" class="w-4 h-4 ' + color + '"></i> <span>' + message + '</span>';
+            container.appendChild(toast); lucide.createIcons();
+            setTimeout(() => { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            setTimeout(() => { toast.classList.add('translate-y-2', 'opacity-0'); setTimeout(() => { toast.remove(); }, 300); }, 3000);
+        }
+
+        function showConfirm(title, text, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmTitle').innerText = title; document.getElementById('confirmText').innerText = text;
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            document.getElementById('confirmCancelBtn').onclick = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+            document.getElementById('confirmApproveBtn').onclick = () => { onConfirm(); modal.classList.add('hidden'); modal.classList.remove('flex'); };
+        }
+
+        /* --- Data Management --- */
+        const STORAGE_KEY = 'sn_data_v13_local';
+        function loadData() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    notebooks = parsed.notebooks || []; todoItems = parsed.todoItems || []; glossaryTerms = parsed.glossaryTerms || [];
+                } catch (e) { notebooks = []; todoItems = []; glossaryTerms = []; }
+            } else { notebooks = []; todoItems = []; glossaryTerms = []; }
+            activeNotebookId = null; activePageId = null;
+        }
+
+        function saveData() {
+            const payload = { notebooks: notebooks, todoItems: todoItems, glossaryTerms: glossaryTerms };
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch (e) { showToast('שגיאה: זכרון הדפדפן מלא!', 'error'); }
+            updateAllVisualIndicators();
+        }
+
+        function saveSettings() {
+            const keyInput = document.getElementById('settingsApiKey');
+            const gcalInput = document.getElementById('settingsGcalUrl');
+            
+            if (keyInput) localStorage.setItem('enote_user_key', keyInput.value.trim());
+            if (gcalInput) localStorage.setItem('enote_gcal_url', gcalInput.value.trim());
+            
+            showToast("ההגדרות נשמרו בהצלחה!", "success");
+            toggleLocalToolCollapse('settings');
+        }
+
+        /* --- Todo System (Quick & Full) --- */
+        function toggleTodo(id) { const item = todoItems.find(x => x.id === id); if(item) item.completed = !item.completed; saveData(); renderTodosQuick(); if(currentMainView==='todo') renderTodosFull(); }
+        function deleteTodo(id) { todoItems = todoItems.filter(x => x.id !== id); saveData(); renderTodosQuick(); if(currentMainView==='todo') renderTodosFull(); }
+        
+        function getUrgencyStyle(u) {
+            if(u === 'high') return '<span class="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-extrabold rounded-sm border border-red-200 uppercase">דחופה!</span>';
+            if(u === 'low') return '<span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-sm border border-emerald-200">נמוכה</span>';
+            return '<span class="px-1.5 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded-sm border border-blue-200">רגילה</span>';
+        }
+
+        function renderTodosQuick() {
+            const list = document.getElementById('todoListQuick'); if (!list) return; list.innerHTML = '';
+            const uncompleted = todoItems.filter(t => !t.completed).slice(0, 5);
+            if (uncompleted.length === 0) { list.innerHTML = '<li class="text-[10px] text-zinc-500 text-center font-bold">אין משימות פתוחות.</li>'; return; }
+            uncompleted.forEach(item => {
+                const li = document.createElement('li'); li.className = "flex justify-between items-center bg-white p-2 border border-zinc-200 text-xs";
+                li.innerHTML = '<div class="flex items-center gap-1.5 overflow-hidden"><input type="checkbox" onchange="toggleTodo(\''+item.id+'\')" class="accent-black flex-shrink-0"><span class="text-black font-semibold truncate" title="'+item.text+'">'+item.text+'</span></div>';
+                list.appendChild(li);
+            });
+        }
+
+        function renderTodosFull() {
+            const container = document.getElementById('fullTodoListContainer'); if (!container) return; container.innerHTML = '';
+            const sortMode = document.getElementById('todoSortSelect').value;
+            
+            let sorted = [...todoItems];
+            if (sortMode === 'date') {
+                sorted.sort((a,b) => {
+                    if(!a.date && !b.date) return 0; if(!a.date) return 1; if(!b.date) return -1;
+                    return new Date(a.date) - new Date(b.date);
+                });
+            } else if (sortMode === 'urgency') {
+                const map = { 'high': 1, 'normal': 2, 'low': 3 };
+                sorted.sort((a,b) => map[a.urgency||'normal'] - map[b.urgency||'normal']);
+            } else if (sortMode === 'subject') {
+                sorted.sort((a,b) => (a.subject||'').localeCompare(b.subject||''));
+            }
+
+            sorted.sort((a,b) => (a.completed === b.completed)? 0 : a.completed ? 1 : -1);
+
+            if (sorted.length === 0) { container.innerHTML = '<div class="text-center p-10 text-zinc-500 font-bold">אין משימות במערכת. הוסף את המשימה הראשונה שלך!</div>'; return; }
+
+            sorted.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-white border-2 border-black p-4 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col sm:flex-row justify-between sm:items-center gap-4 transition-all hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[2px_2px_0_0_rgba(0,0,0,1)] " + (item.completed ? "opacity-60 grayscale-[50%]" : "");
+                
+                // המרת תאריך לפורמט ישראלי DD-MM-YYYY
+                let displayDate = item.date;
+                if(displayDate) {
+                    const parts = displayDate.split('-');
+                    if(parts.length === 3) displayDate = parts[2] + '-' + parts[1] + '-' + parts[0];
+                }
+
+                const leftPart = '<div class="flex items-start sm:items-center gap-3"><input type="checkbox" '+(item.completed?'checked':'')+' onchange="toggleTodo(\''+item.id+'\')" class="w-5 h-5 accent-emerald-600 mt-1 sm:mt-0 cursor-pointer"><div class="flex flex-col"><span class="font-bold text-lg '+(item.completed?'line-through text-zinc-500':'text-black')+'">' + item.text + '</span><div class="flex flex-wrap items-center gap-2 mt-1"><span class="font-mono text-[11px] bg-zinc-100 border border-zinc-300 px-1.5 py-0.5 text-zinc-700 flex items-center gap-1"><i data-lucide="folder" class="w-3 h-3"></i>'+(item.subject||'כללי')+'</span>' + getUrgencyStyle(item.urgency) + (displayDate ? '<span class="font-mono text-[11px] bg-blue-50 border border-blue-200 text-blue-800 px-1.5 py-0.5 flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i>'+displayDate+'</span>' : '') + '</div></div></div>';
+                
+                const escapedText = item.text.replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const escapedSubject = (item.subject || 'כללי').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const rightPart = '<div class="flex items-center gap-2 self-end sm:self-auto">' +
+                    '<button onclick="addToGoogleCalendar(\''+escapedText+'\', \''+(item.date||'')+'\', \''+escapedSubject+'\')" class="px-2 py-1.5 border-2 border-blue-500 text-blue-600 font-bold text-xs hover:bg-blue-50 transition flex items-center gap-1" title="הוסף ליומן גוגל"><i data-lucide="calendar-plus" class="w-4 h-4"></i><span class="hidden sm:inline">ליומן</span></button>' +
+                    '<button onclick="deleteTodo(\''+item.id+'\')" class="px-2 py-1.5 border-2 border-red-500 text-red-600 font-bold text-xs hover:bg-red-50 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div>';
+
+                div.innerHTML = leftPart + rightPart;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function addFullTodoItem() {
+            const input = document.getElementById('fullTodoInput');
+            const subj = document.getElementById('fullTodoSubject');
+            const date = document.getElementById('fullTodoDate');
+            const urg = document.getElementById('fullTodoUrgency');
+            
+            if(!input || !input.value.trim()) { showToast("יש להזין תיאור משימה.", "error"); return; }
+            
+            todoItems.push({ id: 't-' + Date.now(), text: input.value.trim(), subject: subj.value.trim() || 'כללי', date: date.value, urgency: urg.value || 'normal', completed: false });
+            input.value = ''; subj.value = ''; urg.value = 'normal';
+            saveData(); renderTodosFull(); showToast("משימה נוספה בהצלחה!", "success");
+        }
+
+        function addToGoogleCalendar(title, dateStr, subject) {
+            const baseUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE";
+            const eventTitle = title + (subject && subject !== 'כללי' ? ' [' + subject + ']' : '');
+            const encodedTitle = encodeURIComponent(eventTitle);
+            const encodedDesc = encodeURIComponent("משימה זו נוצרה דרך מחברת ENOTE.");
+            
+            let dateParam = "";
+            if (dateStr) {
+                const d = new Date(dateStr);
+                if (!isNaN(d.getTime())) {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    
+                    const nextDay = new Date(d);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    const nYear = nextDay.getFullYear();
+                    const nMonth = String(nextDay.getMonth() + 1).padStart(2, '0');
+                    const nDay = String(nextDay.getDate()).padStart(2, '0');
+                    
+                    // פורמט של יום שלם בגוגל הוא YYYYMMDD/YYYYMMDD כשהתאריך השני הוא יום למחרת
+                    dateParam = `&dates=${year}${month}${day}/${nYear}${nMonth}${nDay}`;
+                }
+            }
+
+            const finalUrl = `${baseUrl}&text=${encodedTitle}&details=${encodedDesc}${dateParam}`;
+            window.open(finalUrl, '_blank');
+            showToast('פותח את יומן גוגל...', 'success');
+        }
+
+        /* --- Glossary System (Quick & Full Alphabetic Accordion) --- */
+        function renderGlossaryQuick() {
+            const list = document.getElementById('glossaryListQuick'); if (!list) return;
+            const q = document.getElementById('glossarySearchQuick').value.toLowerCase(); list.innerHTML = '';
+            const filtered = glossaryTerms.filter(x => x.term.toLowerCase().includes(q) || x.def.toLowerCase().includes(q)).slice(0, 4);
+            if (filtered.length === 0) { list.innerHTML = '<div class="text-[10px] text-zinc-500 text-center font-bold">אין תוצאות.</div>'; return; }
+            filtered.forEach(item => {
+                const div = document.createElement('div'); div.className = "bg-white p-2 border border-zinc-200 space-y-1";
+                div.innerHTML = '<div class="flex justify-between items-center"><strong class="text-black font-bold text-xs truncate" title="'+item.term+'">'+item.term+'</strong><button onclick="deleteGlossary(\''+item.id+'\')" class="text-red-500"><i data-lucide="x" class="w-3 h-3"></i></button></div><p class="text-zinc-600 text-[10px] truncate" title="'+item.def+'">'+item.def+'</p>';
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function renderGlossaryFull() {
+            const container = document.getElementById('fullGlossaryContainer'); if (!container) return;
+            const q = document.getElementById('fullGlossarySearch').value.toLowerCase(); container.innerHTML = '';
+            
+            // סינון וסידור אלפביתי של המונחים
+            let filtered = glossaryTerms.filter(x => x.term.toLowerCase().includes(q) || x.def.toLowerCase().includes(q));
+            filtered.sort((a, b) => a.term.localeCompare(b.term, 'he'));
+            
+            if (filtered.length === 0) { container.innerHTML = '<div class="text-center p-10 text-zinc-500 font-bold text-lg">לא נמצאו מונחים במאגר. הוסף מונח ראשון בטופס למעלה!</div>'; return; }
+
+            filtered.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-white border-2 border-black p-4 shadow-[4px_4px_0_0_rgba(0,0,0,1)] flex flex-col gap-2";
+                
+                let contentHTML = '<div class="flex justify-between items-center cursor-pointer select-none" onclick="toggleGlossaryDef(\''+item.id+'\')"><h3 class="text-xl font-extrabold text-purple-900">' + item.term + '</h3><div class="flex gap-3 items-center"><button onclick="event.stopPropagation(); expandGlossaryTerm(\''+item.id+'\')" title="הרחב עם AI" class="text-purple-500 hover:text-purple-700 hover:bg-purple-50 p-1 border border-transparent hover:border-purple-200 transition rounded flex items-center gap-1 text-[11px] font-bold"><i data-lucide="sparkles" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">הרחב AI</span></button><button onclick="event.stopPropagation(); deleteGlossary(\''+item.id+'\')" class="text-red-500 hover:bg-red-50 p-1 border border-transparent hover:border-red-200 transition rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button><i data-lucide="chevron-down" id="glos-icon-'+item.id+'" class="w-5 h-5 text-zinc-500 transition-transform duration-300"></i></div></div>';
+                contentHTML += '<div id="glos-def-'+item.id+'" class="hidden mt-3 p-3 bg-purple-50 border border-purple-200 text-sm font-semibold text-zinc-800 leading-relaxed">' + (item.expandedDef || item.def) + '</div>';
+                
+                div.innerHTML = contentHTML;
+                container.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        async function expandGlossaryTerm(id) {
+            const item = glossaryTerms.find(x => x.id === id); if (!item) return;
+            const userKey = localStorage.getItem('enote_user_key') || '';
+            if (!userKey) { showToast("נדרש מפתח Gemini API בהגדרות להרחבה אוטומטית.", "error"); return; }
+            
+            const defEl = document.getElementById('glos-def-' + id);
+            const iconEl = document.getElementById('glos-icon-' + id);
+            if (defEl) { defEl.classList.remove('hidden'); defEl.innerHTML = '<span class="text-purple-400 text-xs animate-pulse">מרחיב עם AI...</span>'; if(iconEl) iconEl.classList.add('rotate-180'); }
+            
+            try {
+                const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + userKey;
+                const prompt = 'ספק הסבר אקדמי מעמיק על המונח "' + item.term + '" (הגדרה בסיסית: ' + item.def + '). כלול: הסבר מורחב, דוגמאות מעשיות, וקשר לתחום הלימוד. כתוב בעברית, בפסקאות קצרות וברורות. עד 150 מילים.';
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || 'שגיאת שרת');
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!text) throw new Error('תשובה ריקה מה-AI');
+                item.expandedDef = text.trim();
+                saveData();
+                if (defEl) defEl.innerHTML = item.expandedDef.replace(/\n/g, '<br>');
+                showToast('המונח הורחב בהצלחה!', 'success');
+            } catch (err) {
+                console.error(err);
+                if (defEl) defEl.innerHTML = item.def;
+                showToast('שגיאה בהרחבת המונח: ' + err.message, 'error');
+            }
+        }
+
+        function toggleGlossaryDef(id) {
+            const def = document.getElementById('glos-def-' + id);
+            const icon = document.getElementById('glos-icon-' + id);
+            if(def) {
+                if(def.classList.contains('hidden')) { def.classList.remove('hidden'); if(icon) icon.classList.add('rotate-180'); } 
+                else { def.classList.add('hidden'); if(icon) icon.classList.remove('rotate-180'); }
+            }
+        }
+
+        function addGlossaryTerm() {
+            const termIn = document.getElementById('glossaryTerm'), defIn = document.getElementById('glossaryDef');
+            if (!termIn || !defIn) return;
+            const t = termIn.value.trim(), d = defIn.value.trim(); if(!t || !d) { showToast("יש להזין מונח והגדרה.", "error"); return; }
+            glossaryTerms.push({ id: 'g-' + Date.now(), term: t, def: d }); termIn.value = ''; defIn.value = ''; saveData(); renderGlossaryQuick(); if(currentMainView==='glossary') renderGlossaryFull();
+            showToast("המונח נוסף בהצלחה!", "success");
+        }
+        function addGlossaryTermQuick() {
+            const termIn = document.getElementById('glossaryTermQuick'), defIn = document.getElementById('glossaryDefQuick');
+            if (!termIn || !defIn) return;
+            const t = termIn.value.trim(), d = defIn.value.trim(); if(!t || !d) { showToast("יש להזין מונח והגדרה.", "error"); return; }
+            glossaryTerms.push({ id: 'g-' + Date.now(), term: t, def: d }); termIn.value = ''; defIn.value = ''; saveData(); renderGlossaryQuick(); if(currentMainView==='glossary') renderGlossaryFull();
+            showToast("המונח נוסף!", "success");
+        }
+        function deleteGlossary(id) { glossaryTerms = glossaryTerms.filter(x => x.id !== id); saveData(); renderGlossaryQuick(); if(currentMainView==='glossary') renderGlossaryFull(); }
+
+        /* --- Google Calendar View --- */
+        function renderCalendar() {
+            const container = document.getElementById('googleCalendarContainer');
+            if(!container) return;
+            const gcalUrl = localStorage.getItem('enote_gcal_url');
+            
+            if (gcalUrl && gcalUrl.trim() !== '') {
+                container.innerHTML = '<iframe src="' + gcalUrl + '" style="border: 0" width="100%" height="100%" frameborder="0" scrolling="no"></iframe>';
+            } else {
+                container.innerHTML = '<div class="text-center bg-white p-8 border-2 border-black shadow-[4px_4px_0_0_rgba(0,0,0,1)] max-w-lg mx-auto mt-10"><i data-lucide="calendar-off" class="w-12 h-12 mx-auto mb-4 text-zinc-400"></i><h3 class="font-bold text-xl mb-2">לא הוגדר יומן גוגל</h3><p class="text-sm text-zinc-600 mb-6 font-semibold">כדי לצפות ולנהל את היומן שלך ישירות כאן, עליך להטמיע את הקישור מתוך ההגדרות שלך בגוגל.<br><br>1. היכנס ליומן גוגל שלך דרך הדפדפן -> הגדרות (Settings).<br>2. בסרגל הצד, בחר את היומן שלך תחת "הגדרות עבור יומנים שלי".<br>3. גלול למטה לאזור "שילוב היומן" (Integrate calendar).<br>4. העתק את הכתובת מתוך השדה <strong>"כתובת ציבורית של יומן זה"</strong> (או קוד הטמעה).<br>5. הדבק את הכתובת תחת מסך "הגדרות" בתפריט הצד שלנו.</p><button onclick="toggleNotebooksSidebar(false); toggleLocalToolCollapse(\'settings\');" class="px-6 py-2 bg-black text-white font-bold text-sm shadow-md hover:bg-zinc-800 transition">פתח הגדרות חשבון עכשיו</button></div>';
+                lucide.createIcons();
+            }
+        }
+
+        function updateAllVisualIndicators() {
+            const activeTodos = todoItems.filter(x => !x.completed).length;
+            const todoBadge = document.getElementById('todoCountBadge');
+            if (todoBadge) {
+                if (activeTodos > 0) { todoBadge.innerText = activeTodos; todoBadge.classList.remove('hidden'); todoBadge.classList.add('flex'); } 
+                else { todoBadge.classList.add('hidden'); todoBadge.classList.remove('flex'); }
+            }
+            const glossaryCount = glossaryTerms.length;
+            const glossaryBadge = document.getElementById('glossaryCountBadge');
+            if (glossaryBadge) {
+                if (glossaryCount > 0) { glossaryBadge.innerText = glossaryCount; glossaryBadge.classList.remove('hidden'); glossaryBadge.classList.add('flex'); } 
+                else { glossaryBadge.classList.add('hidden'); glossaryBadge.classList.remove('flex'); }
+            }
+        }
+
+        function toggleLocalToolCollapse(toolId) {
+            const contentEl = document.getElementById(`tool-${toolId}-content`);
+            const chevron = document.getElementById(`chevron-${toolId}`);
+            if (!contentEl) return;
+            const isHidden = contentEl.classList.contains('hidden');
+            const tools = ['todo', 'glossary', 'calculator', 'settings'];
+            tools.forEach(t => {
+                const el = document.getElementById(`tool-${t}-content`); if (el) el.classList.add('hidden');
+                const chev = document.getElementById(`chevron-${t}`); if (chev) chev.classList.remove('rotate-180');
+            });
+            if (isHidden) { contentEl.classList.remove('hidden'); if (chevron) chevron.classList.add('rotate-180'); }
+        }
+
+        function toggleNotebooksSidebar(shouldCollapse) {
+            const sidebar = document.getElementById('notebooksSidebar'); if (!sidebar) return;
+            const isHidden = sidebar.classList.contains('hidden');
+            const collapse = shouldCollapse !== undefined ? shouldCollapse : !isHidden;
+            if (collapse) sidebar.classList.add('hidden'); else sidebar.classList.remove('hidden');
+        }
+
+        function toggleFocusMode(activate) {
+            isFocusMode = activate;
+            const body = document.body; const exitBtn = document.getElementById('exitFocusModeBtn'); const sidebar = document.getElementById('notebooksSidebar');
+            if (activate) {
+                wasSidebarOpenBeforeFocus = sidebar ? !sidebar.classList.contains('hidden') : true;
+                body.classList.add('focus-mode-active'); if (exitBtn) exitBtn.classList.remove('hidden');
+            } else {
+                body.classList.remove('focus-mode-active'); if (exitBtn) exitBtn.classList.add('hidden');
+                toggleNotebooksSidebar(!wasSidebarOpenBeforeFocus);
+            }
+            lucide.createIcons();
+        }
+
+        function toggleNotebooksLimit() {
+            limitNotebooks = !limitNotebooks;
+            renderNotebooks();
+        }
+
+        function editNotebookTitle() {
+            const nb = notebooks.find(n=>n.id===activeNotebookId); if (!nb) return;
+            const titleEl = document.getElementById('activeNotebookTitle');
+            if (!titleEl) return;
+            titleEl.contentEditable = 'true';
+            titleEl.focus();
+            // Select all text
+            const range = document.createRange(); range.selectNodeContents(titleEl); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            const save = () => {
+                titleEl.contentEditable = 'false';
+                const newTitle = titleEl.innerText.trim() || nb.title;
+                titleEl.innerText = newTitle;
+                nb.title = newTitle;
+                saveData(); renderNotebooks();
+                titleEl.removeEventListener('blur', save);
+                titleEl.removeEventListener('keydown', keyHandler);
+            };
+            const keyHandler = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { titleEl.innerText = nb.title; titleEl.contentEditable = 'false'; titleEl.removeEventListener('blur', save); titleEl.removeEventListener('keydown', keyHandler); } };
+            titleEl.addEventListener('blur', save);
+            titleEl.addEventListener('keydown', keyHandler);
+        }
+
+        function editPageTitle(id) {
+            const nb = notebooks.find(n=>n.id===activeNotebookId); if (!nb) return; const p = nb.pages.find(x=>x.id===id); if (!p) return;
+            // Find the tab span and make it inline-editable
+            const tabs = document.querySelectorAll('#pagesTabsContainer .page-tab');
+            let targetSpan = null;
+            tabs.forEach(tab => {
+                const span = tab.querySelector('span');
+                if (span && span.innerText === p.title) targetSpan = span;
+            });
+            if (!targetSpan) return;
+            targetSpan.contentEditable = 'true';
+            targetSpan.focus();
+            const range = document.createRange(); range.selectNodeContents(targetSpan); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+            const save = () => {
+                targetSpan.contentEditable = 'false';
+                const newTitle = targetSpan.innerText.trim() || p.title;
+                p.title = newTitle;
+                saveData(); renderTabs();
+                targetSpan.removeEventListener('blur', save);
+                targetSpan.removeEventListener('keydown', keyHandler);
+            };
+            const keyHandler = (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') { targetSpan.innerText = p.title; targetSpan.contentEditable = 'false'; targetSpan.removeEventListener('blur', save); targetSpan.removeEventListener('keydown', keyHandler); } };
+            targetSpan.addEventListener('blur', save);
+            targetSpan.addEventListener('keydown', keyHandler);
+        }
+
+        function renderNotebooks() {
+            const list = document.getElementById('notebooksList'); if (!list) return; list.innerHTML = '';
+            if (notebooks.length === 0) { list.innerHTML = `<div class="text-xs text-zinc-500 text-center p-2 font-bold">רשימה ריקה</div>`; updateView(); return; }
+            const displayList = limitNotebooks ? notebooks.slice(0, 3) : notebooks;
+            displayList.forEach(nb => {
+                const isActive = nb.id === activeNotebookId;
+                const div = document.createElement('div');
+                div.className = `cursor-pointer border-2 transition text-sm ${isActive ? 'border-black' : 'border-transparent hover:border-zinc-300'}`;
+                // Notebook row
+                const row = document.createElement('div');
+                row.className = `p-2.5 flex items-center gap-2 ${isActive ? 'bg-black text-white font-bold' : ''}`;
+                row.innerHTML = '<span class="text-base flex-shrink-0">' + (nb.icon || '📓') + '</span><span class="truncate flex-1">' + nb.title + '</span>';
+                row.onclick = () => selectNotebook(nb.id);
+                div.appendChild(row);
+                // On mobile: show pages inline when this notebook is active
+                if (isActive && nb.pages && nb.pages.length > 0) {
+                    const pagesList = document.createElement('div');
+                    pagesList.className = 'bg-zinc-50 border-t border-zinc-300';
+                    nb.pages.forEach(p => {
+                        const pRow = document.createElement('div');
+                        pRow.className = `px-4 py-2 text-xs font-semibold cursor-pointer flex items-center gap-2 ${p.id === activePageId ? 'bg-zinc-200 font-bold' : 'hover:bg-zinc-100'}`;
+                        pRow.innerHTML = '<i data-lucide="file-text" class="w-3 h-3 flex-shrink-0 text-zinc-400"></i><span class="truncate">' + p.title + '</span>';
+                        pRow.onclick = (e) => { e.stopPropagation(); selectPage(p.id); };
+                        pagesList.appendChild(pRow);
+                    });
+                    div.appendChild(pagesList);
+                }
+                list.appendChild(div);
+            });
+            if (limitNotebooks && notebooks.length > 3) {
+                const more = document.createElement('div'); more.className = "text-xs text-zinc-500 font-bold text-center p-1 mt-1 cursor-pointer hover:text-black";
+                more.innerText = `הצג עוד ${notebooks.length - 3} מחברות...`; more.onclick = toggleNotebooksLimit; list.appendChild(more);
+            }
+            updateView();
+        }
+
+        function selectNotebook(id) {
+            savePageData(); switchMainView('notebook');
+            if (activeNotebookId === id) { activeNotebookId = null; activePageId = null; switchMainView('dashboard'); } 
+            else { activeNotebookId = id; const nb = notebooks.find(n => n.id === id); if (nb && nb.pages.length > 0) activePageId = nb.pages[0].id; }
+            historyStack = []; redoStack = []; renderNotebooks();
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('pagesTabsContainer'); if (!container) return; container.innerHTML = '';
+            const nb = notebooks.find(n => n.id === activeNotebookId); if (!nb) return;
+            nb.pages.forEach(p => {
+                const isAct = p.id === activePageId;
+                const div = document.createElement('div'); div.className = `page-tab group ${isAct ? 'active' : 'bg-white text-black border-zinc-200'}`;
+                const titleSpan = document.createElement('span'); titleSpan.innerText = p.title;
+                titleSpan.onclick = () => selectPage(p.id); titleSpan.ondblclick = (e) => { e.stopPropagation(); editPageTitle(p.id); };
+                const delBtn = document.createElement('button'); delBtn.innerHTML = '<i data-lucide="x" class="w-3 h-3"></i>';
+                delBtn.className = `opacity-0 group-hover:opacity-100 transition ${isAct ? 'text-white/80 hover:text-white' : 'text-red-500'}`;
+                delBtn.onclick = (e) => { e.stopPropagation(); deletePage(p.id); };
+                div.appendChild(titleSpan); if (nb.pages.length > 1) div.appendChild(delBtn); container.appendChild(div);
+            });
+            const addBtn = document.createElement('div'); addBtn.className = "page-tab border-b-0 opacity-50 hover:opacity-100 bg-transparent";
+            addBtn.innerHTML = `<i data-lucide="plus" class="w-3 h-3"></i>`; addBtn.onclick = openCreatePageModal;
+            container.appendChild(addBtn); lucide.createIcons();
+        }
+
+        function selectPage(id) { 
+            savePageData(); 
+            const nb = notebooks.find(n=>n.id===activeNotebookId); 
+            if (nb) { const p = nb.pages.find(x=>x.id===activePageId); if (p) snapshotPageVersion(p); }
+            activePageId = id; historyStack = []; redoStack = []; renderTabs(); loadPageData();
+            // On mobile: close the sidebar after picking a page and switch to write view
+            if (window.innerWidth <= 767) { 
+                setTimeout(() => { closeMobileSidebar(); updateMobileNavHighlight && updateMobileNavHighlight('notebook'); }, 50);
+            }
+        }
+
+        function loadPageData() {
+            const nb = notebooks.find(n => n.id === activeNotebookId); if(!nb) return; const p = nb.pages.find(x => x.id === activePageId); if(!p) return;
+            const contentEl = document.getElementById('noteContent'); if (contentEl) contentEl.innerHTML = p.content;
+            setPageDirection(p.direction || 'rtl', false); applyPageTypeVisual(p.type || 'ruled'); historyStack.push(p.content); reHighlight();
+            setTimeout(() => { document.querySelectorAll('.code-block-container').forEach(block => { if (block.id) updateCodeBlock(block.id); }); }, 50);
+        }
+
+        function savePageData(hist = true) {
+            if(!activeNotebookId || !activePageId) return;
+            const nb = notebooks.find(n=>n.id===activeNotebookId); if (!nb) return;
+            const p = nb.pages.find(x=>x.id===activePageId); if (!p) return;
+            const contentEl = document.getElementById('noteContent'); if (contentEl) p.content = contentEl.innerHTML;
+            saveData(); if(hist && !isWriting) saveHistoryState();
+        }
+
+        function updateView() {
+            const ws = document.getElementById('view-notebook'); const noWs = document.getElementById('noActiveNotebook');
+            if (currentMainView !== 'notebook') {
+                if (noWs) noWs.classList.add('hidden'); if (ws) ws.classList.add('hidden');
+                return;
+            }
+            if (!activeNotebookId) {
+                if (noWs) noWs.classList.remove('hidden'); if (ws) ws.classList.add('hidden');
+            } else {
+                if (noWs) noWs.classList.add('hidden');
+                if (ws) { ws.classList.remove('hidden'); ws.classList.remove('crumple-animation'); }
+                const paper = document.getElementById('paperSheet'); if (paper) paper.classList.remove('crumple-animation');
+                const nb = notebooks.find(n => n.id === activeNotebookId);
+                const titleEl = document.getElementById('activeNotebookTitle'); 
+                if (titleEl && nb) { titleEl.innerText = nb.title; }
+                const iconEl = document.getElementById('activeNotebookIcon');
+                if (iconEl && nb) iconEl.innerText = nb.icon || '📓';
+                renderTabs(); loadPageData();
+            }
+        }
+
+        function setPageDirection(dir, save = true) {
+            const e = document.getElementById('noteContent'); const rtl = document.getElementById('btnDirRTL'), ltr = document.getElementById('btnDirLTR');
+            const workspace = document.getElementById('view-notebook'); if (!e) return;
+            e.classList.remove('paper-rtl', 'paper-ltr', 'dir-rtl', 'dir-ltr'); if (workspace) workspace.classList.remove('dir-rtl-active', 'dir-ltr-active');
+            if (rtl) rtl.classList.remove('bg-zinc-200'); if (ltr) ltr.classList.remove('bg-zinc-200');
+            if(dir==='rtl'){ e.classList.add('paper-rtl', 'dir-rtl'); if (workspace) workspace.classList.add('dir-rtl-active'); if (rtl) rtl.classList.add('bg-zinc-200'); }
+            else { e.classList.add('paper-ltr', 'dir-ltr'); if (workspace) workspace.classList.add('dir-ltr-active'); if (ltr) ltr.classList.add('bg-zinc-200'); }
+            if(save) { const nb = notebooks.find(n=>n.id===activeNotebookId); if (nb) { const page = nb.pages.find(x=>x.id===activePageId); if (page) { page.direction = dir; saveData(); } } }
+        }
+
+        function changePageType(type) {
+            applyPageTypeVisual(type); const nb = notebooks.find(n=>n.id===activeNotebookId);
+            if (nb) { const page = nb.pages.find(x=>x.id===activePageId); if(page) { page.type = type; saveData(); } }
+        }
+
+        function applyPageTypeVisual(type) {
+            const content = document.getElementById('noteContent'); if (!content) return;
+            const canvasSheet = document.getElementById('canvasSheet'); const paperSheet = document.getElementById('paperSheet');
+            content.classList.remove('ruled-paper', 'grid-paper', 'canvas-paper');
+            const btns = [document.getElementById('btnTypeRuled'), document.getElementById('btnTypeGrid'), document.getElementById('btnTypeCanvas')]; btns.forEach(b => { if (b) b.classList.remove('bg-zinc-200'); });
+            if (type === 'canvas') {
+                if (paperSheet) paperSheet.classList.add('hidden'); if (canvasSheet) canvasSheet.classList.remove('hidden');
+                if (btns[2]) btns[2].classList.add('bg-zinc-200');
+                initCanvas(); setTimeout(loadCanvasData, 30);
+                return;
+            }
+            if (paperSheet) paperSheet.classList.remove('hidden'); if (canvasSheet) canvasSheet.classList.add('hidden');
+            content.classList.add(type + '-paper');
+            if(type === 'ruled' && btns[0]) btns[0].classList.add('bg-zinc-200'); if(type === 'grid' && btns[1]) btns[1].classList.add('bg-zinc-200');
+        }
+
+        function changeZoom(s) {
+            let currentSize = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--font-size'));
+            document.documentElement.style.setProperty('--font-size', `${Math.max(12, Math.min(32, currentSize + (s * 2)))}px`);
+        }
+
+        function toggleCalcMode() {
+            isCalcMode = !isCalcMode;
+            const calcUI = document.getElementById('calculatorInterface'), convUI = document.getElementById('converterInterface'), modeName = document.getElementById('calcModeName');
+            if (isCalcMode) { if (calcUI) calcUI.classList.remove('hidden'); if (convUI) convUI.classList.add('hidden'); if (modeName) modeName.innerText = 'ממיר יחידות'; } 
+            else { if (calcUI) calcUI.classList.add('hidden'); if (convUI) convUI.classList.remove('hidden'); if (modeName) modeName.innerText = 'מחשבון'; setupConverterUnits(); }
+        }
+        function calcInput(v) { const calcDisplay = document.getElementById('calcDisplay'); if (calcDisplay) calcDisplay.value += v; }
+        function calcClear() { const calcDisplay = document.getElementById('calcDisplay'); if (calcDisplay) calcDisplay.value = ''; }
+        function calcCalculate() {
+            try { 
+                const calcDisplay = document.getElementById('calcDisplay'); if (!calcDisplay) return; let expr = calcDisplay.value; 
+                if(/^[0-9+\-*/.() ]+$/.test(expr)) { let res = new Function('return ' + expr)(); calcDisplay.value = Number.isInteger(res) ? res : parseFloat(res.toFixed(4)); } 
+                else { calcDisplay.value = 'Err'; }
+            } catch { const calcDisplay = document.getElementById('calcDisplay'); if (calcDisplay) calcDisplay.value = 'Err'; }
+        }
+
+        function setupConverterUnits() {
+            const catEl = document.getElementById('convCategory'), fromSelect = document.getElementById('convFromUnit'), toSelect = document.getElementById('convToUnit');
+            if (!catEl || !fromSelect || !toSelect) return; const category = catEl.value; fromSelect.innerHTML = ''; toSelect.innerHTML = '';
+            const units = Object.keys(conversionLabels[category]);
+            units.forEach(u => {
+                const opt1 = document.createElement('option'); opt1.value = u; opt1.innerText = conversionLabels[category][u]; fromSelect.appendChild(opt1);
+                const opt2 = document.createElement('option'); opt2.value = u; opt2.innerText = conversionLabels[category][u]; toSelect.appendChild(opt2);
+            });
+            if (units.length > 1) toSelect.selectedIndex = 1; performConversion();
+        }
+
+        function performConversion() {
+            const catEl = document.getElementById('convCategory'), fromEl = document.getElementById('convFromUnit'), toEl = document.getElementById('convToUnit'), valEl = document.getElementById('convInputValue'), resEl = document.getElementById('convResult');
+            if (!catEl || !fromEl || !toEl || !valEl || !resEl) return;
+            const category = catEl.value, fromUnit = fromEl.value, toUnit = toEl.value, val = parseFloat(valEl.value);
+            if (isNaN(val)) { resEl.innerText = 'הזן מספר תקין'; return; }
+            let result;
+            if (category === 'temp') result = convertTemperature(val, fromUnit, toUnit); else { const baseValue = val * conversionRates[category][fromUnit]; result = baseValue / conversionRates[category][toUnit]; }
+            resEl.innerText = `תוצאה: ${Number.isInteger(result) ? result : parseFloat(result.toFixed(4))}`;
+        }
+        function convertTemperature(value, from, to) {
+            if (from === to) return value; let celsius;
+            if (from === 'c') celsius = value; else if (from === 'f') celsius = (value - 32) * 5 / 9; else if (from === 'k') celsius = value - 273.15;
+            if (to === 'c') return celsius; else if (to === 'f') return (celsius * 9 / 5) + 32; else if (to === 'k') return celsius + 273.15;
+        }
+
+        function runCrumpleAndTrashAnimation(targetElement, onComplete) {
+            const bin = document.getElementById('trashBin'), lid = document.getElementById('trashLid'), binInner = document.getElementById('trashBinInner');
+            if (!bin || !lid || !targetElement) { onComplete(); return; }
+            bin.classList.remove('hidden'); bin.offsetHeight; bin.classList.remove('opacity-0', 'scale-90'); bin.classList.add('opacity-100', 'scale-100');
+            lid.style.transform = 'rotate(-90deg) translate(-20px, -20px)'; targetElement.classList.add('crumple-animation');
+            setTimeout(() => { lid.style.transform = 'rotate(0deg)'; }, 600); setTimeout(() => { if (binInner) binInner.classList.add('shake-bin'); }, 650);
+            setTimeout(() => { bin.classList.remove('opacity-100', 'scale-100'); bin.classList.add('opacity-0', 'scale-90'); if (binInner) binInner.classList.remove('shake-bin');
+                setTimeout(() => { bin.classList.add('hidden'); targetElement.classList.remove('crumple-animation'); onComplete(); }, 300);
+            }, 1200);
+        }
+
+        function deleteActiveNotebook() {
+            if(!activeNotebookId) return; const nb = notebooks.find(n => n.id === activeNotebookId); if (!nb) return;
+            showConfirm("מחיקת מחברת", "האם אתה בטוח שברצונך למחוק את המחברת '" + nb.title + "'?", () => {
+                const workspace = document.getElementById('view-notebook');
+                runCrumpleAndTrashAnimation(workspace, () => {
+                    notebooks = notebooks.filter(n => n.id !== activeNotebookId); activeNotebookId = null; activePageId = null; saveData(); renderNotebooks(); switchMainView('dashboard');
+                });
+            });
+        }
+
+        function deletePage(pageId) {
+            const nb = notebooks.find(n => n.id === activeNotebookId); if(!nb || nb.pages.length <= 1) return; 
+            showConfirm("מחיקת דף במחברת", "האם אתה בטוח שברצונך למחוק דף זה?", () => {
+                if (activePageId === pageId) { const paper = document.getElementById('noteContent'); runCrumpleAndTrashAnimation(paper, () => { processPageDeletion(nb, pageId); }); } 
+                else { processPageDeletion(nb, pageId); }
+            });
+        }
+
+        function processPageDeletion(nb, pageId) {
+            nb.pages = nb.pages.filter(p => p.id !== pageId); if(activePageId === pageId) activePageId = nb.pages[0].id; 
+            saveData(); const paper = document.getElementById('noteContent'); if (paper) paper.classList.remove('crumple-animation'); renderTabs(); loadPageData();
+        }
+
+        function openNewNotebookModal() {
+            createMode = 'notebook'; document.getElementById('modalTitle').innerText = 'יצירת מחברת חדשה';
+            document.getElementById('notebookIconPickerRow').classList.remove('hidden');
+            // Build icon picker
+            const icons = ['📓','📔','📒','📕','📗','📘','📙','📐','🔬','🧪','💻','🖥️','⚙️','🧮','📊','📈','🎨','🎵','🏛️','⚖️','🌍','🧬','🔭','🧠','📝','✏️','🏋️','🌱'];
+            const grid = document.getElementById('iconPickerGrid'); grid.innerHTML = '';
+            document.getElementById('selectedNotebookIcon').value = icons[0];
+            icons.forEach(icon => {
+                const btn = document.createElement('button');
+                btn.className = 'text-lg p-1 rounded border-2 border-transparent hover:border-black transition icon-btn';
+                btn.innerText = icon; btn.type = 'button';
+                btn.onclick = () => { document.getElementById('selectedNotebookIcon').value = icon; grid.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('border-black','bg-zinc-100')); btn.classList.add('border-black','bg-zinc-100'); };
+                grid.appendChild(btn);
+            });
+            grid.querySelector('.icon-btn').classList.add('border-black','bg-zinc-100');
+            const modal = document.getElementById('createModal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+            const input = document.getElementById('createInput'); input.value = ''; input.focus();
+        }
+        function openCreatePageModal() {
+            createMode = 'page'; document.getElementById('modalTitle').innerText = 'הוספת דף למחברת';
+            document.getElementById('notebookIconPickerRow').classList.add('hidden');
+            const modal = document.getElementById('createModal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+            const input = document.getElementById('createInput'); input.value = ''; input.focus();
+        }
+        function closeCreateModal() { const modal = document.getElementById('createModal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        function handleCreateSubmit() {
+            const input = document.getElementById('createInput'); if (!input) return; const title = input.value.trim() || 'ללא שם';
+            const type = document.getElementById('createType') ? document.getElementById('createType').value : 'ruled';
+            if (createMode === 'notebook') {
+                const icon = document.getElementById('selectedNotebookIcon')?.value || '📓';
+                const newId = 'nb-' + Date.now(); const pageId = 'p-' + Date.now();
+                notebooks.unshift({ id: newId, title: title, icon: icon, pages: [{ id: pageId, title: 'דף 1', content: '', direction: 'rtl', type: type }] });
+                activeNotebookId = newId; activePageId = pageId; renderNotebooks(); switchMainView('notebook');
+            } else {
+                const nb = notebooks.find(n => n.id === activeNotebookId);
+                if (nb) { const pageId = 'p-' + Date.now(); nb.pages.push({ id: pageId, title: title, content: '', direction: 'rtl', type: type }); selectPage(pageId); }
+            }
+            saveData(); closeCreateModal();
+        }
+
+
+        /* --- עורך קוד חכם מובנה (Code Block Widget) --- */
+        function insertCodeBlock() {
+            showSelectModal('שפת תכנות', 'בחר את שפת הקוד:', ['javascript','python','java','cpp','html','css','sql','typescript','bash','json','other'], 'javascript', (lang) => {
+                if (!lang) return;
+                const blockId = 'code-' + Date.now();
+            const html = 
+                '<div id="' + blockId + '" class="code-block-container my-4 border-2 border-black bg-[#1e1e1e] text-zinc-100 rounded-sm font-mono overflow-hidden" contenteditable="false" style="direction: ltr; text-align: left;">' +
+                    '<div class="flex items-center justify-between px-3 py-1.5 bg-[#2d2d2d] border-b-2 border-black text-xs text-zinc-400 select-none"><span class="font-bold uppercase tracking-wider">' + lang + '</span><div class="flex gap-3"><button onclick="toggleCodeEdit(\'' + blockId + '\')" id="btn-edit-' + blockId + '" class="hover:text-white transition flex items-center gap-1"><i data-lucide="edit" class="w-3.5 h-3.5"></i>ערוך קוד</button><button onclick="copyCodeText(\'' + blockId + '\')" class="hover:text-white transition flex items-center gap-1"><i data-lucide="copy" class="w-3.5 h-3.5"></i>העתק</button></div></div>' +
+                    '<pre id="preview-' + blockId + '" onclick="enableCodeEdit(\'' + blockId + '\')" class="p-3 overflow-x-auto text-sm cursor-pointer select-text" style="line-height: 1.2 !important; font-family: \'JetBrains Mono\', monospace !important; margin: 0 !important; background: transparent !important;"><code class="language-' + lang.toLowerCase() + '" style="background: transparent !important; line-height: 1.2 !important;">// הקלד קוד כאן...</code></pre>' +
+                    '<div id="editor-' + blockId + '" class="hidden p-3 flex gap-3 text-sm border-t border-zinc-800 bg-[#1e1e1e]"><div id="lines-' + blockId + '" class="line-numbers text-zinc-500 select-none text-right font-mono" style="line-height: 1.2 !important; font-family: \'JetBrains Mono\', monospace !important; min-width: 20px;">1</div><textarea id="input-' + blockId + '" oninput="updateCodeBlock(\'' + blockId + '\')" onkeydown="handleCodeKeydown(event, \'' + blockId + '\')" class="code-input w-full bg-transparent text-zinc-100 outline-none resize-none font-mono" style="line-height: 1.2 !important; font-family: \'JetBrains Mono\', monospace !important; min-height: 60px;" spellcheck="false"></textarea></div>' +
+                '</div><br>';
+            insertHTML(html); lucide.createIcons(); updateCodeBlock(blockId); saveHistoryState(); savePageData();
+            });
+        }
+
+        function updateCodeBlock(blockId) {
+            const textarea = document.getElementById('input-' + blockId), preview = document.getElementById('preview-' + blockId), linesDiv = document.getElementById('lines-' + blockId);
+            if (!textarea || !preview || !linesDiv) return;
+            const codeVal = textarea.value; textarea.textContent = codeVal; textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px';
+            const codeElement = preview.querySelector('code');
+            if (codeElement) { codeElement.textContent = codeVal || '// הקלד קוד כאן...'; if (typeof hljs !== 'undefined' && hljs.highlightElement) hljs.highlightElement(codeElement); }
+            const lines = codeVal.split('\n'); const lineCount = Math.max(1, lines.length); let lineNumbersHTML = '';
+            for (let i = 1; i <= lineCount; i++) lineNumbersHTML += i + '<br>';
+            linesDiv.innerHTML = lineNumbersHTML; savePageData();
+        }
+
+        function enableCodeEdit(blockId) {
+            const preview = document.getElementById('preview-' + blockId), editor = document.getElementById('editor-' + blockId), textarea = document.getElementById('input-' + blockId), btn = document.getElementById('btn-edit-' + blockId);
+            if (!preview || !editor || !textarea) return;
+            preview.classList.add('hidden'); editor.classList.remove('hidden');
+            if (btn) btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>סגור עריכה'; lucide.createIcons();
+            textarea.focus(); textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px';
+            // Use focusout with containment check so clicking line-numbers or elsewhere inside the block doesn't close it
+            const container = document.getElementById(blockId);
+            const focusOutHandler = (e) => {
+                if (container && container.contains(e.relatedTarget)) return; // focus stayed inside block
+                container && container.removeEventListener('focusout', focusOutHandler);
+                disableCodeEdit(blockId);
+            };
+            container && container.addEventListener('focusout', focusOutHandler);
+        }
+
+        function disableCodeEdit(blockId) {
+            setTimeout(() => {
+                const preview = document.getElementById('preview-' + blockId), editor = document.getElementById('editor-' + blockId), btn = document.getElementById('btn-edit-' + blockId);
+                if (!preview || !editor) return;
+                editor.classList.add('hidden'); preview.classList.remove('hidden'); if (btn) btn.innerHTML = '<i data-lucide="edit" class="w-3.5 h-3.5"></i>ערוך קוד'; lucide.createIcons(); savePageData();
+            }, 250);
+        }
+
+        function toggleCodeEdit(blockId) {
+            const editor = document.getElementById('editor-' + blockId);
+            if (editor && editor.classList.contains('hidden')) enableCodeEdit(blockId); else disableCodeEdit(blockId);
+        }
+
+        function handleCodeKeydown(e, blockId) {
+            const textarea = e.target; const start = textarea.selectionStart; const end = textarea.selectionEnd;
+            const pairs = { '(': ')', '[': ']', '{': '}', '"': '"', "'": "'" }; const closingPairs = { ')': true, ']': true, '}': true, '"': true, "'": true };
+            
+            // סגירה אוטומטית של סוגריים ומרכאות
+            if (closingPairs[e.key] && textarea.value[start] === e.key) { e.preventDefault(); textarea.selectionStart = textarea.selectionEnd = start + 1; return; }
+            if (pairs[e.key]) {
+                e.preventDefault(); const val = textarea.value; const closingChar = pairs[e.key];
+                textarea.value = val.substring(0, start) + e.key + closingChar + val.substring(end);
+                textarea.selectionStart = textarea.selectionEnd = start + 1; updateCodeBlock(blockId); return;
+            }
+            if (e.key === 'Backspace' && start === end && start > 0) {
+                const val = textarea.value; const prevChar = val[start - 1]; const nextChar = val[start];
+                if (pairs[prevChar] === nextChar) {
+                    e.preventDefault(); textarea.value = val.substring(0, start - 1) + val.substring(end + 1);
+                    textarea.selectionStart = textarea.selectionEnd = start - 1; updateCodeBlock(blockId); return;
+                }
+            }
+            if (e.key === 'Tab') {
+                e.preventDefault(); const val = textarea.value; textarea.value = val.substring(0, start) + '    ' + val.substring(end);
+                textarea.selectionStart = textarea.selectionEnd = start + 4; updateCodeBlock(blockId); return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault(); const val = textarea.value; const beforeCursor = val.substring(0, start); const lines = beforeCursor.split('\n');
+                const currentLine = lines[lines.length - 1]; const match = currentLine.match(/^(\s*)/); const indentation = match ? match[1] : '';
+                let extraIndent = ''; const trimmed = currentLine.trim(); if (trimmed.endsWith(':') || trimmed.endsWith('{') || trimmed.endsWith('[')) extraIndent = '    ';
+                if (val[start-1] === '{' && val[start] === '}') {
+                    textarea.value = val.substring(0, start) + '\n' + indentation + '    ' + '\n' + indentation + val.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 1 + indentation.length + 4; updateCodeBlock(blockId); return;
+                }
+                textarea.value = val.substring(0, start) + '\n' + indentation + extraIndent + val.substring(end);
+                textarea.selectionStart = textarea.selectionEnd = start + 1 + indentation.length + extraIndent.length; updateCodeBlock(blockId); return;
+            }
+        }
+
+        function copyCodeText(blockId) {
+            const textarea = document.getElementById('input-' + blockId);
+            const previewCode = document.getElementById('preview-' + blockId)?.querySelector('code');
+            const text = (textarea && textarea.value) ? textarea.value : (previewCode ? previewCode.textContent : '');
+            if (!text || text === '// הקלד קוד כאן...') { showToast("אין קוד להעתקה.", "error"); return; }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => showToast("הקוד הועתק ללוח!", "success")).catch(() => { try { document.execCommand('copy'); showToast("הקוד הועתק ללוח!", "success"); } catch(e) { showToast("ההעתקה נכשלה.", "error"); } });
+            } else {
+                try { const tmp = document.createElement('textarea'); tmp.value = text; document.body.appendChild(tmp); tmp.select(); document.execCommand('copy'); document.body.removeChild(tmp); showToast("הקוד הועתק ללוח!", "success"); } catch(e) { showToast("ההעתקה נכשלה.", "error"); }
+            }
+        }
+
+        /* --- שחזור היסטוריה --- */
+        function reHighlight() { document.querySelectorAll('pre code').forEach(block => { if (typeof hljs !== 'undefined' && hljs.highlightElement) hljs.highlightElement(block); }); }
+        function saveHistoryState() { const editor = document.getElementById('noteContent'); if (!editor) return; const h = editor.innerHTML; if(historyStack.length===0 || historyStack[historyStack.length-1]!==h) { historyStack.push(h); if(historyStack.length>50) historyStack.shift(); redoStack = []; } }
+        function undo() { if(historyStack.length>1) { redoStack.push(historyStack.pop()); const editor = document.getElementById('noteContent'); if (editor) editor.innerHTML = historyStack[historyStack.length-1]; savePageData(false); reHighlight(); } }
+        function redo() { if(redoStack.length>0) { const n = redoStack.pop(); historyStack.push(n); const editor = document.getElementById('noteContent'); if (editor) editor.innerHTML = n; savePageData(false); reHighlight(); } }
+        function formatDoc(cmd) { document.execCommand(cmd); saveHistoryState(); savePageData(); }
+        function formatBlock(tag) { document.execCommand('formatBlock', false, `<${tag}>`); saveHistoryState(); savePageData(); }
+        function highlightText(c) { if(c==='transparent') document.execCommand('backColor', false, 'inherit'); else document.execCommand('backColor', false, c); saveHistoryState(); savePageData(); }
+        function insertHTML(html) { const noteContent = document.getElementById('noteContent'); if (!noteContent) return; noteContent.focus(); const sel = window.getSelection(); if(sel.rangeCount>0 && noteContent.contains(sel.getRangeAt(0).commonAncestorContainer)){ const r = sel.getRangeAt(0); r.deleteContents(); const d = document.createElement('div'); d.innerHTML = html; const frag = document.createDocumentFragment(); let n, last; while(n=d.firstChild){ last=frag.appendChild(n); } r.insertNode(frag); if(last){ const nr = r.cloneRange(); nr.setStartAfter(last); nr.collapse(true); sel.removeAllRanges(); sel.addRange(nr); } } else { noteContent.innerHTML += html; } }
+
+        /* --- הוספת פס טעינה ל-AI --- */
+        function startProgressBar() { const bar = document.getElementById('aiProgressBar'); if(!bar) return; bar.style.width = '0%'; let width = 0; progressInterval = setInterval(() => { if (width >= 90) clearInterval(progressInterval); else { width += Math.random() * (90 - width) * 0.08 + 0.5; bar.style.width = width + '%'; } }, 300); }
+        function finishProgressBar() { if (progressInterval) clearInterval(progressInterval); const bar = document.getElementById('aiProgressBar'); if(bar) bar.style.width = '100%'; }
+        function resetProgressBar() { if (progressInterval) clearInterval(progressInterval); const bar = document.getElementById('aiProgressBar'); if(bar) bar.style.width = '0%'; }
+
+        async function fetchWithBackoff(url, options) {
+            const delays = [1000, 2000, 4000]; let lastErrorMsg = "";
+            for (let i = 0; i <= 3; i++) {
+                try { const response = await fetch(url, options); const data = await response.json(); if (!response.ok) throw new Error(data.error?.message || `HTTP ${response.status}`); return data; } 
+                catch (error) { lastErrorMsg = error.message; if (i === 3) throw new Error(lastErrorMsg); await new Promise(res => setTimeout(res, delays[i])); }
+            }
+        }
+        async function extractTextFromPDF(file) {
+            const arrayBuffer = await file.arrayBuffer(); const pdf = await pdfjsLib.getDocument({data: new Uint8Array(arrayBuffer)}).promise; let text = ''; const maxPages = Math.min(pdf.numPages, 10);
+            for (let i = 1; i <= maxPages; i++) { const page = await pdf.getPage(i); const content = await page.getTextContent(); text += content.items.map(item => item.str).join(' ') + '\n'; } return text;
+        }
+        async function extractTextFromDocx(file) { const arrayBuffer = await file.arrayBuffer(); const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer}); return result.value; }
+
+        async function handleAIFileUpload(event) {
+            const file = event.target.files[0]; if (!file) return; const filename = file.name.toLowerCase();
+            const overlay = document.getElementById('aiLoadingOverlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
+            resetProgressBar(); startProgressBar(); let extractedText = '';
+
+            try {
+                if (filename.endsWith('.pdf')) extractedText = await extractTextFromPDF(file);
+                else if (filename.endsWith('.docx') || filename.endsWith('.doc')) extractedText = await extractTextFromDocx(file);
+                else extractedText = await file.text();
+                if (!extractedText.trim()) throw new Error("לא נמצא טקסט בקובץ הנתון.");
+
+                const prompt = "אתה עוזר לימודים אקדמי מתקדם. סכם בצורה מעמיקה, מובנית וברורה את הטקסט המצורף.\n" +
+                               "חובה לכתוב בעברית.\n" +
+                               "החזר פלט בפורמט JSON בלבד לפי הסכמה הנדרשת.\n" +
+                               "במידה ויש קוד בטקסט, אל תשתמש בתגיות pre/code רגילות. במקום זאת, עליך ליצור עבור כל קטע קוד את רכיב ה-HTML האינטראקטיבי המובנה שלנו בדיוק לפי המבנה הבא (החלף את code_BLOCK_ID במזהה ייחודי שתמציא, למשל code-ai-1):\n" +
+                               "<div id=\"code_BLOCK_ID\" class=\"code-block-container my-4 border-2 border-black bg-[#1e1e1e] text-zinc-100 rounded-sm font-mono overflow-hidden\" contenteditable=\"false\" style=\"direction: ltr; text-align: left;\"><div class=\"flex items-center justify-between px-3 py-1.5 bg-[#2d2d2d] border-b-2 border-black text-xs text-zinc-400 select-none\"><span class=\"font-bold uppercase tracking-wider\">LANGUAGE</span><div class=\"flex gap-3\"><button onclick=\"toggleCodeEdit('code_BLOCK_ID')\" id=\"btn-edit-code_BLOCK_ID\" class=\"hover:text-white transition flex items-center gap-1\"><i data-lucide=\"edit\" class=\"w-3.5 h-3.5\"></i>ערוך קוד</button><button onclick=\"copyCodeText('code_BLOCK_ID')\" class=\"hover:text-white transition flex items-center gap-1\"><i data-lucide=\"copy\" class=\"w-3.5 h-3.5\"></i>העתק</button></div></div><pre id=\"preview-code_BLOCK_ID\" onclick=\"enableCodeEdit('code_BLOCK_ID')\" class=\"p-3 overflow-x-auto text-sm cursor-pointer select-text\" style=\"line-height: 1.2 !important; font-family: 'JetBrains Mono', monospace !important; margin: 0 !important; background: transparent !important;\"><code class=\"language-LANGUAGE\" style=\"background: transparent !important; line-height: 1.2 !important;\">ESCAPED_CODE</code></pre><div id=\"editor-code_BLOCK_ID\" class=\"hidden p-3 flex gap-3 text-sm border-t border-zinc-800 bg-[#1e1e1e]\"><div id=\"lines-code_BLOCK_ID\" class=\"line-numbers text-zinc-500 select-none text-right font-mono\" style=\"line-height: 1.2 !important; font-family: 'JetBrains Mono', monospace !important; min-width: 20px;\">1</div><textarea id=\"input-code_BLOCK_ID\" oninput=\"updateCodeBlock('code_BLOCK_ID')\" onkeydown=\"handleCodeKeydown(event, 'code_BLOCK_ID')\" class=\"code-input w-full bg-transparent text-zinc-100 outline-none resize-none font-mono\" style=\"line-height: 1.2 !important; font-family: 'JetBrains Mono', monospace !important; min-height: 60px;\" spellcheck=\"false\">ESCAPED_CODE</textarea></div></div>\n\n" +
+                               "הנה הטקסט לסיכום:\n" + extractedText.substring(0, 15000);
+
+                const userKey = localStorage.getItem('enote_user_key') || '';
+                if (!userKey) { throw new Error("מפתח Gemini API אינו מוגדר. אנא הגדר אותו בהגדרות בסיידבר."); }
+
+                const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + userKey;
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                pageTitle: { type: "STRING" },
+                                htmlContent: { type: "STRING" }
+                            },
+                            required: ["pageTitle", "htmlContent"]
+                        }
+                    }
+                };
+
+                const data = await fetchWithBackoff(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!responseText) throw new Error("התקבלה תשובה ריקה מהשרת.");
+                
+                const parsedData = JSON.parse(responseText);
+                const aiResponseHTML = parsedData.htmlContent;
+                const aiPageTitle = parsedData.pageTitle || (file.name.substring(0, 10) + ' (AI)');
+
+                finishProgressBar(); await new Promise(r => setTimeout(r, 400));
+                
+                if(!activeNotebookId && notebooks.length > 0) { activeNotebookId = notebooks[0].id; }
+                const nb = notebooks.find(n => n.id === activeNotebookId);
+                if (nb) {
+                    const pageId = 'p-' + Date.now(); 
+                    nb.pages.push({ id: pageId, title: aiPageTitle, content: aiResponseHTML, direction: 'rtl', type: 'ruled' });
+                    selectPage(pageId); switchMainView('notebook'); saveData();
+                    showToast("הסיכום הושלם! הדף נוסף למחברת.", "success");
+                } else { showToast("אנא צור מחברת ראשונה תחילה.", "error"); }
+
+            } catch (err) {
+                console.error(err); finishProgressBar(); await new Promise(r => setTimeout(r, 400));
+                showToast("אירעה שגיאה בחיבור ל-AI: " + err.message, "error");
+                const nb = notebooks.find(n => n.id === activeNotebookId);
+                if (nb) {
+                    const pageId = 'p-' + Date.now(); const cleanTitle = file.name.substring(0, 10) + ' (גיבוי)';
+                    const fallbackHtml = '<h2>טקסט שחולץ אוטומטית</h2><br><p>' + extractedText.substring(0, 10000).replace(/\n/g, '<br>') + '</p>';
+                    nb.pages.push({ id: pageId, title: cleanTitle, content: fallbackHtml, direction: 'rtl', type: 'ruled' });
+                    selectPage(pageId); switchMainView('notebook');
+                }
+            } finally { overlay.classList.remove('flex'); overlay.classList.add('hidden'); resetProgressBar(); event.target.value = ""; }
+        }
+
+        /* --- מנגנון תפריט הורדה --- */
+        function toggleDownloadDropdown(e) { e.stopPropagation(); const dropdown = document.getElementById('downloadDropdown'); if (dropdown) { dropdown.classList.toggle('hidden'); } }
+        function closeDownloadDropdown() { const dropdown = document.getElementById('downloadDropdown'); if (dropdown) dropdown.classList.add('hidden'); }
+        window.addEventListener('click', () => { closeDownloadDropdown(); });
+
+        function savePageAsImage() {
+            const paper = document.getElementById('noteContent'); if (!paper) return;
+            html2canvas(paper, { backgroundColor: '#ffffff', scale: 2, logging: false, useCORS: true }).then(canvas => {
+                const link = document.createElement('a'); const activeNb = notebooks.find(n => n.id === activeNotebookId); let fileName = 'notebook-page';
+                if (activeNb) { const page = activeNb.pages.find(p => p.id === activePageId); fileName = activeNb.title + '-' + (page ? page.title : 'page'); }
+                link.download = fileName + '.png'; link.href = canvas.toDataURL('image/png'); link.click();
+            }).catch(err => { showToast("אירעה שגיאה בייצוא הדף כתמונה. נסה שנית.", "error"); }).finally(() => { closeDownloadDropdown(); });
+        }
+
+        function savePageAsPDF() {
+            const paper = document.getElementById('noteContent'); if (!paper) return;
+            const overlay = document.getElementById('aiLoadingOverlay'); const loadingText = document.getElementById('aiLoadingText');
+            if (overlay && loadingText) { loadingText.innerText = "מייצא קובץ PDF..."; overlay.classList.remove('hidden'); overlay.classList.add('flex'); }
+
+            html2canvas(paper, { backgroundColor: '#ffffff', scale: 2, logging: false, useCORS: true }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png'); const { jsPDF } = window.jspdf;
+                const imgWidth = 595.28; const pageHeight = 841.89; const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight; const pdf = new jsPDF('p', 'pt', 'a4'); let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight;
+                while (heightLeft >= 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight); heightLeft -= pageHeight; }
+                
+                const activeNb = notebooks.find(n => n.id === activeNotebookId); let fileName = 'notebook-page';
+                if (activeNb) { const page = activeNb.pages.find(p => p.id === activePageId); fileName = activeNb.title + '-' + (page ? page.title : 'page'); }
+                pdf.save(fileName + '.pdf');
+            }).catch(err => { console.error("PDF Export Error", err); showToast("אירעה שגיאה בייצוא הדף כ-PDF.", "error"); }).finally(() => {
+                if (overlay && loadingText) { overlay.classList.remove('flex'); overlay.classList.add('hidden'); loadingText.innerText = "מעבד את הקובץ..."; }
+                closeDownloadDropdown();
+            });
+        }
+
+        function savePageAsWord() {
+            const paper = document.getElementById('noteContent'); if (!paper) return;
+            const activeNb = notebooks.find(n => n.id === activeNotebookId); let fileName = 'notebook-page';
+            if (activeNb) { const page = activeNb.pages.find(p => p.id === activePageId); fileName = activeNb.title + '-' + (page ? page.title : 'page'); }
+            const contentHtml = paper.innerHTML;
+            const htmlString = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><title>' + fileName + '</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>90</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]--><style>body { font-family: "Assistant", "Arial", sans-serif; direction: rtl; text-align: right; line-height: 1.5; } h1 { font-size: 24pt; font-weight: bold; margin-bottom: 12pt; } h2 { font-size: 18pt; font-weight: bold; margin-bottom: 9pt; } p { font-size: 12pt; margin-bottom: 6pt; } ul { margin-right: 20pt; } li { font-size: 12pt; }</style></head><body>' + contentHtml + '</body></html>';
+            const blob = new Blob(['\ufeff' + htmlString], { type: 'application/msword;charset=utf-8' });
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = fileName + '.doc';
+            document.body.appendChild(link); link.click(); document.body.removeChild(link); closeDownloadDropdown();
+        }
+
+        /* --- Selection → Glossary with AI --- */
+        let _capturedGlossaryText = '';
+        function captureGlossarySelection() {
+            const noteContent = document.getElementById('noteContent');
+            const sel = window.getSelection();
+            _capturedGlossaryText = '';
+            if (sel && sel.rangeCount > 0 && noteContent && noteContent.contains(sel.anchorNode)) {
+                _capturedGlossaryText = sel.toString().trim();
+            }
+        }
+        async function addSelectionToGlossary() {
+            const selectedText = _capturedGlossaryText;
+            if (!selectedText) { showToast("סמן מילה או משפט בדף תחילה.", "error"); return; }
+            if (selectedText.length > 200) { showToast("הטקסט הנבחר ארוך מדי. בחר מונח קצר יותר.", "error"); return; }
+
+            // Open modal with the term pre-filled and "loading" state for definition
+            const termInput = document.getElementById('glossaryModalTerm');
+            const defInput = document.getElementById('glossaryModalDef');
+            const modal = document.getElementById('glossaryAddModal');
+            if (!termInput || !defInput || !modal) return;
+            termInput.value = selectedText;
+            defInput.value = 'מחפש הגדרה עם AI...';
+            defInput.disabled = true;
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+
+            const userKey = localStorage.getItem('enote_user_key') || '';
+            if (!userKey) {
+                defInput.value = '';
+                defInput.disabled = false;
+                defInput.placeholder = 'אין מפתח AI - הזן הגדרה ידנית.';
+                return;
+            }
+
+            try {
+                const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + userKey;
+                const prompt = 'הגדר את המונח הבא בהגדרה אקדמית קצרה ומדויקת של 2-3 משפטים בעברית. המונח: "' + selectedText + '". החזר אך ורק את ההגדרה, ללא כותרת או הקדמה.';
+                const payload = { contents: [{ parts: [{ text: prompt }] }] };
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || 'שגיאה');
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                defInput.value = text || '';
+            } catch (err) {
+                defInput.value = '';
+                showToast('ניתוח AI נכשל. הזן הגדרה ידנית.', 'error');
+            } finally {
+                defInput.disabled = false;
+                defInput.focus();
+            }
+        }
+
+        function closeGlossaryAddModal() {
+            const modal = document.getElementById('glossaryAddModal');
+            if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        }
+
+        function confirmGlossaryAdd() {
+            const term = document.getElementById('glossaryModalTerm')?.value.trim();
+            const def = document.getElementById('glossaryModalDef')?.value.trim();
+            if (!term || !def) { showToast("יש להזין מונח והגדרה.", "error"); return; }
+            glossaryTerms.push({ id: 'g-' + Date.now(), term, def });
+            saveData(); renderGlossaryQuick(); if(currentMainView==='glossary') renderGlossaryFull();
+            closeGlossaryAddModal();
+            showToast('המונח "' + term + '" נוסף למילון!', 'success');
+        }
+
+        /* --- Select Modal Helper --- */
+        function showSelectModal(title, text, options, defaultVal, onConfirm) {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmTitle').innerText = title;
+            const textEl = document.getElementById('confirmText');
+            textEl.innerHTML = text + '<br><br><select id="_selectModalVal" class="w-full mt-1 px-3 py-2 border-2 border-black bg-white outline-none font-bold">' +
+                options.map(o => `<option value="${o}" ${o===defaultVal?'selected':''}>${o}</option>`).join('') + '</select>';
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            document.getElementById('confirmCancelBtn').onclick = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
+            document.getElementById('confirmApproveBtn').onclick = () => {
+                const val = document.getElementById('_selectModalVal')?.value;
+                modal.classList.add('hidden'); modal.classList.remove('flex');
+                onConfirm(val);
+            };
+        }
+
+        /* ===================== חזרה יומית (Spaced Repetition) ===================== */
+        function renderDashboardReview() {
+            const section = document.getElementById('dashboardReviewSection');
+            const cardsEl = document.getElementById('dashboardReviewCards');
+            if (!section || !cardsEl) return;
+            if (!glossaryTerms || glossaryTerms.length === 0) { section.classList.add('hidden'); return; }
+
+            // בחירה דטרמיניסטית לפי תאריך, כך שאותם 3 מונחים יוצגו במהלך היום
+            const todaySeed = new Date().toISOString().split('T')[0].split('-').reduce((a,b)=>a+parseInt(b),0);
+            const sorted = [...glossaryTerms];
+            // ערבוב פסאודו-אקראי דטרמיניסטי
+            const shuffled = sorted.map((item, i) => ({ item, key: ((i+1) * 9301 + todaySeed * 49297) % 233280 })).sort((a,b)=>a.key-b.key).map(x=>x.item);
+            const picks = shuffled.slice(0, Math.min(3, shuffled.length));
+
+            section.classList.remove('hidden'); cardsEl.innerHTML = '';
+            picks.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'border-2 border-black p-4 bg-white shadow-[3px_3px_0_0_rgba(0,0,0,1)] cursor-pointer flex flex-col gap-2 min-h-[110px] hover:bg-zinc-50 transition';
+                card.innerHTML = '<div class="font-extrabold text-base flex items-center gap-2"><i data-lucide="rotate-3d" class="w-4 h-4 text-purple-500"></i>' + item.term + '</div>' +
+                                  '<div class="def-area text-xs text-zinc-500 font-semibold italic">לחץ להצגת ההגדרה</div>';
+                card.onclick = () => {
+                    const defArea = card.querySelector('.def-area');
+                    const isFlipped = card.dataset.flipped === '1';
+                    if (!isFlipped) {
+                        defArea.innerHTML = (item.expandedDef || item.def).slice(0, 220);
+                        defArea.className = 'text-xs text-zinc-700 font-semibold leading-relaxed';
+                        card.dataset.flipped = '1';
+                    } else {
+                        defArea.innerHTML = 'לחץ להצגת ההגדרה';
+                        defArea.className = 'def-area text-xs text-zinc-500 font-semibold italic';
+                        card.dataset.flipped = '0';
+                    }
+                };
+                cardsEl.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        /* ===================== לוח שרטוט (Canvas) ===================== */
+        let canvasCtx = null, canvasDrawing = false, canvasMode = 'pen', canvasColor = '#000000', canvasLastX = 0, canvasLastY = 0;
+        function setCanvasTool(color) {
+            canvasColor = color; canvasMode = 'pen';
+            document.querySelectorAll('.canvas-color-btn').forEach(b => b.classList.remove('ring-2','ring-offset-1','ring-black'));
+            const btn = document.querySelector('.canvas-color-btn[data-color="'+color+'"]'); if(btn) btn.classList.add('ring-2','ring-offset-1','ring-black');
+            const penBtn = document.getElementById('canvasPenBtn'), eraserBtn = document.getElementById('canvasEraserBtn');
+            if(penBtn) penBtn.classList.add('bg-zinc-200'); if(eraserBtn) eraserBtn.classList.remove('bg-zinc-200');
+        }
+        function setCanvasMode(mode) {
+            canvasMode = mode;
+            const penBtn = document.getElementById('canvasPenBtn'), eraserBtn = document.getElementById('canvasEraserBtn');
+            if (mode === 'pen') { penBtn.classList.add('bg-zinc-200'); eraserBtn.classList.remove('bg-zinc-200'); }
+            else { eraserBtn.classList.add('bg-zinc-200'); penBtn.classList.remove('bg-zinc-200'); }
+        }
+        function initCanvas() {
+            const canvas = document.getElementById('drawCanvas'); if (!canvas) return;
+            if (canvas.dataset.bound === '1') return;
+            canvas.dataset.bound = '1';
+            canvasCtx = canvas.getContext('2d');
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+                const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+                return { x: cx * (canvas.width / rect.width), y: cy * (canvas.height / rect.height) };
+            };
+            const startDraw = (e) => { e.preventDefault(); canvasDrawing = true; const p = getPos(e); canvasLastX = p.x; canvasLastY = p.y; };
+            const draw = (e) => {
+                if (!canvasDrawing || !canvasCtx) return; e.preventDefault();
+                const p = getPos(e);
+                canvasCtx.lineJoin = 'round'; canvasCtx.lineCap = 'round';
+                canvasCtx.lineWidth = parseInt(document.getElementById('canvasWidth').value) * (canvasMode === 'eraser' ? 4 : 1);
+                canvasCtx.strokeStyle = canvasMode === 'eraser' ? '#ffffff' : canvasColor;
+                canvasCtx.beginPath(); canvasCtx.moveTo(canvasLastX, canvasLastY); canvasCtx.lineTo(p.x, p.y); canvasCtx.stroke();
+                canvasLastX = p.x; canvasLastY = p.y;
+            };
+            const endDraw = () => { if (canvasDrawing) { canvasDrawing = false; saveCanvasData(); } };
+            canvas.addEventListener('mousedown', startDraw); canvas.addEventListener('mousemove', draw); canvas.addEventListener('mouseup', endDraw); canvas.addEventListener('mouseleave', endDraw);
+            canvas.addEventListener('touchstart', startDraw); canvas.addEventListener('touchmove', draw); canvas.addEventListener('touchend', endDraw);
+            setCanvasTool('#000000');
+        }
+        function clearCanvas() {
+            const canvas = document.getElementById('drawCanvas'); if (!canvas || !canvasCtx) return;
+            showConfirm('ניקוי לוח השרטוט', 'האם לנקות את כל הלוח? לא ניתן לשחזר פעולה זו.', () => {
+                canvasCtx.clearRect(0, 0, canvas.width, canvas.height); saveCanvasData();
+            });
+        }
+        function saveCanvasData() {
+            const canvas = document.getElementById('drawCanvas'); if (!canvas) return;
+            const nb = notebooks.find(n=>n.id===activeNotebookId); if (!nb) return;
+            const p = nb.pages.find(x=>x.id===activePageId); if (!p) return;
+            p.canvasData = canvas.toDataURL('image/png'); saveData();
+        }
+        function loadCanvasData() {
+            const canvas = document.getElementById('drawCanvas'); if (!canvas || !canvasCtx) return;
+            const nb = notebooks.find(n=>n.id===activeNotebookId); if (!nb) return;
+            const p = nb.pages.find(x=>x.id===activePageId); if (!p) return;
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            if (p.canvasData) { const img = new Image(); img.onload = () => canvasCtx.drawImage(img, 0, 0); img.src = p.canvasData; }
+        }
+
+        /* ===================== קישור בין דפים [[ ]] ===================== */
+        function getAllPagesForLinking() {
+            const list = [];
+            notebooks.forEach(nb => nb.pages.forEach(p => list.push({ nbId: nb.id, nbTitle: nb.title, pageId: p.id, pageTitle: p.title })));
+            return list;
+        }
+        function handleEditorInputForLinks(e) {
+            const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) { hideLinkAutocomplete(); return; }
+            const range = sel.getRangeAt(0); const node = range.startContainer;
+            if (node.nodeType !== 3) { hideLinkAutocomplete(); return; }
+            const textBefore = node.textContent.slice(0, range.startOffset);
+            const match = textBefore.match(/\[\[([^\[\]]{0,30})$/);
+            if (!match) { hideLinkAutocomplete(); return; }
+            showLinkAutocomplete(match[1], node, range);
+        }
+        function showLinkAutocomplete(query, node, range) {
+            const dropdown = document.getElementById('linkAutocomplete'); if (!dropdown) return;
+            const all = getAllPagesForLinking().filter(p => !query || p.pageTitle.toLowerCase().includes(query.toLowerCase()) || p.nbTitle.toLowerCase().includes(query.toLowerCase()));
+            if (all.length === 0) { hideLinkAutocomplete(); return; }
+            dropdown.innerHTML = '';
+            all.slice(0, 8).forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'px-3 py-2 hover:bg-zinc-100 cursor-pointer border-b border-zinc-100 flex items-center gap-2';
+                item.innerHTML = '<i data-lucide="file-text" class="w-3.5 h-3.5 text-zinc-400 flex-shrink-0"></i><div class="flex flex-col"><span class="font-bold">' + p.pageTitle + '</span><span class="text-[10px] text-zinc-400">' + p.nbTitle + '</span></div>';
+                item.onmousedown = (e) => { e.preventDefault(); insertPageLink(p, query); };
+                dropdown.appendChild(item);
+            });
+            // מיקום התפריט לפי מיקום הסמן
+            const r = range.cloneRange(); r.collapse(true);
+            const rect = r.getClientRects()[0];
+            const wrapperRect = document.getElementById('paperWrapper').getBoundingClientRect();
+            if (rect) {
+                dropdown.style.top = (rect.bottom - wrapperRect.top + document.getElementById('paperSheet').scrollTop + 4) + 'px';
+                dropdown.style.left = Math.min(rect.left - wrapperRect.left, wrapperRect.width - 270) + 'px';
+            }
+            dropdown.classList.remove('hidden');
+            lucide.createIcons();
+        }
+        function hideLinkAutocomplete() { const d = document.getElementById('linkAutocomplete'); if (d) d.classList.add('hidden'); }
+        function insertPageLink(pageInfo, query) {
+            const sel = window.getSelection(); if (!sel || sel.rangeCount === 0) return;
+            const range = sel.getRangeAt(0); const node = range.startContainer;
+            if (node.nodeType === 3) {
+                // הסרת הטקסט "[[query" שהוקלד
+                const removeLen = query.length + 2;
+                const offset = range.startOffset;
+                node.textContent = node.textContent.slice(0, offset - removeLen) + node.textContent.slice(offset);
+                range.setStart(node, offset - removeLen); range.setEnd(node, offset - removeLen);
+            }
+            const link = document.createElement('a');
+            link.href = 'javascript:void(0)'; link.className = 'page-link'; link.contentEditable = 'false';
+            link.dataset.nbId = pageInfo.nbId; link.dataset.pageId = pageInfo.pageId;
+            link.style.cssText = 'background:#000;color:#fff;padding:1px 8px;border-radius:4px;text-decoration:none;font-weight:bold;font-size:0.85em;cursor:pointer;display:inline-block;line-height:1.4;';
+            link.innerHTML = '🔗 ' + pageInfo.pageTitle;
+            range.insertNode(link);
+            // הוספת רווח אחרי הקישור והעברת הסמן
+            const space = document.createTextNode('\u00A0');
+            link.after(space);
+            range.setStartAfter(space); range.setEndAfter(space);
+            sel.removeAllRanges(); sel.addRange(range);
+            hideLinkAutocomplete(); saveHistoryState(); savePageData();
+        }
+        function navigateToPageLink(nbId, pageId) {
+            if (!notebooks.find(n=>n.id===nbId)) return;
+            activeNotebookId = nbId;
+            renderNotebooks(); switchMainView('notebook'); selectPage(pageId);
+        }
+
+        /* ===================== חיפוש כללי (Ctrl+F) ===================== */
+        function stripHtml(html) {
+            const tmp = document.createElement('div'); tmp.innerHTML = html;
+            return (tmp.textContent || tmp.innerText || '').replace(/\s+/g, ' ').trim();
+        }
+        function openGlobalSearch() {
+            const modal = document.getElementById('globalSearchOverlay');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            const input = document.getElementById('globalSearchInput'); input.value = ''; input.focus();
+            document.getElementById('globalSearchResults').innerHTML = '';
+        }
+        function closeGlobalSearch() {
+            const modal = document.getElementById('globalSearchOverlay');
+            modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+        function performGlobalSearch() {
+            const q = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+            const resultsEl = document.getElementById('globalSearchResults');
+            if (!q) { resultsEl.innerHTML = ''; return; }
+            const results = [];
+            notebooks.forEach(nb => nb.pages.forEach(p => {
+                const plain = stripHtml(p.content || '');
+                const titleMatch = p.title.toLowerCase().includes(q);
+                const idx = plain.toLowerCase().indexOf(q);
+                if (titleMatch || idx !== -1) {
+                    let snippet = '';
+                    if (idx !== -1) {
+                        const start = Math.max(0, idx - 30);
+                        snippet = (start > 0 ? '…' : '') + plain.slice(start, idx + q.length + 40) + '…';
+                    }
+                    results.push({ nbId: nb.id, nbTitle: nb.title, nbIcon: nb.icon || '📓', pageId: p.id, pageTitle: p.title, snippet });
+                }
+            }));
+            if (results.length === 0) { resultsEl.innerHTML = '<div class="p-4 text-center text-zinc-400 text-sm font-bold">אין תוצאות</div>'; return; }
+            resultsEl.innerHTML = '';
+            results.slice(0, 30).forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'p-3 border-b border-zinc-100 hover:bg-zinc-50 cursor-pointer';
+                div.innerHTML = '<div class="font-bold text-sm flex items-center gap-2">' + r.nbIcon + ' ' + r.pageTitle + ' <span class="text-[10px] text-zinc-400 font-normal">— ' + r.nbTitle + '</span></div>' +
+                                 (r.snippet ? '<div class="text-xs text-zinc-500 mt-1 leading-relaxed">' + r.snippet + '</div>' : '');
+                div.onclick = () => { closeGlobalSearch(); navigateToPageLink(r.nbId, r.pageId); };
+                resultsEl.appendChild(div);
+            });
+        }
+
+        /* ===================== היסטוריית גרסאות ===================== */
+        function snapshotPageVersion(p) {
+            if (!p) return;
+            if (!p.versions) p.versions = [];
+            const last = p.versions[p.versions.length - 1];
+            if (last && last.content === p.content) return; // אין שינוי
+            p.versions.push({ ts: Date.now(), content: p.content });
+            if (p.versions.length > 15) p.versions.shift();
+        }
+        function openVersionHistory() {
+            const nb = notebooks.find(n=>n.id===activeNotebookId); if (!nb) return;
+            const p = nb.pages.find(x=>x.id===activePageId); if (!p) return;
+            savePageData(); // לכלול את הגרסה הנוכחית בהשוואה
+            const listEl = document.getElementById('versionHistoryList'); listEl.innerHTML = '';
+            const versions = p.versions ? [...p.versions].reverse() : [];
+            if (versions.length === 0) { listEl.innerHTML = '<div class="text-center text-zinc-400 text-sm font-bold p-4">אין גרסאות שמורות עדיין. גרסאות נשמרות בעת מעבר בין דפים.</div>'; }
+            versions.forEach(v => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between border border-zinc-200 p-2.5';
+                const date = new Date(v.ts);
+                div.innerHTML = '<div class="text-xs font-bold">' + date.toLocaleDateString('he-IL') + ' • ' + date.toLocaleTimeString('he-IL', {hour:'2-digit', minute:'2-digit'}) + '</div>';
+                const btn = document.createElement('button');
+                btn.className = 'px-3 py-1 text-xs font-bold border-2 border-black hover:bg-black hover:text-white transition';
+                btn.innerText = 'שחזר';
+                btn.onclick = () => {
+                    showConfirm('שחזור גרסה', 'לשחזר את הדף לגרסה זו? התוכן הנוכחי יוחלף.', () => {
+                        p.content = v.content; saveData();
+                        document.getElementById('noteContent').innerHTML = v.content;
+                        historyStack = [v.content]; redoStack = []; reHighlight();
+                        closeVersionHistory(); showToast('הדף שוחזר בהצלחה.', 'success');
+                    });
+                };
+                div.appendChild(btn); listEl.appendChild(div);
+            });
+            const modal = document.getElementById('versionHistoryModal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+        }
+        function closeVersionHistory() {
+            const modal = document.getElementById('versionHistoryModal'); modal.classList.add('hidden'); modal.classList.remove('flex');
+        }
+
+        /* ===================== MOBILE FEATURES ===================== */
+
+        // --- Sidebar drawer ---
+        function toggleMobileSidebar() {
+            const sb = document.getElementById('notebooksSidebar');
+            const bd = document.getElementById('mobileSidebarBackdrop');
+            const isOpen = sb.classList.contains('mob-open');
+            if (isOpen) { sb.classList.remove('mob-open'); bd.classList.remove('visible'); }
+            else { sb.classList.add('mob-open'); bd.classList.add('visible'); }
+        }
+        function closeMobileSidebar() {
+            document.getElementById('notebooksSidebar').classList.remove('mob-open');
+            document.getElementById('mobileSidebarBackdrop').classList.remove('visible');
+        }
+
+        // --- Bottom navigation ---
+        function mobileNav(viewName) {
+            closeMobileSidebar();
+            switchMainView(viewName);
+            updateMobileNavHighlight(viewName);
+        }
+        function updateMobileNavHighlight(viewName) {
+            document.querySelectorAll('.mnav-btn').forEach(btn => {
+                btn.classList.remove('text-black'); btn.classList.add('text-zinc-400');
+            });
+            const active = document.getElementById('mnav-' + viewName);
+            if (active) { active.classList.add('text-black'); active.classList.remove('text-zinc-400'); }
+        }
+
+        // --- Mobile toolbar sheet ---
+        let toolbarSheetOpen = false;
+        function toggleMobileToolbarSheet() {
+            const sheet = document.getElementById('mobileToolbarSheet');
+            toolbarSheetOpen = !toolbarSheetOpen;
+            sheet.classList.toggle('open', toolbarSheetOpen);
+        }
+
+        // --- Voice input (Web Speech API) ---
+        let voiceRecognition = null;
+        function startVoiceInput() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { showToast('קלט קולי אינו נתמך בדפדפן זה.', 'error'); return; }
+            if (voiceRecognition) { voiceRecognition.stop(); voiceRecognition = null; updateVoiceBtn(false); return; }
+            voiceRecognition = new SR();
+            voiceRecognition.lang = 'he-IL'; voiceRecognition.continuous = false; voiceRecognition.interimResults = false;
+            voiceRecognition.onstart = () => { updateVoiceBtn(true); showToast('מאזין... דבר עכשיו 🎙', 'info'); };
+            voiceRecognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                const editor = document.getElementById('noteContent'); if (!editor) return;
+                editor.focus(); document.execCommand('insertText', false, text + ' ');
+                saveHistoryState(); savePageData();
+                showToast('✓ "' + text.slice(0, 30) + '"', 'success');
+            };
+            voiceRecognition.onerror = () => { showToast('שגיאת קלט קולי.', 'error'); };
+            voiceRecognition.onend = () => { voiceRecognition = null; updateVoiceBtn(false); };
+            voiceRecognition.start();
+        }
+        function updateVoiceBtn(active) {
+            const btn = document.getElementById('voiceBtn');
+            if (!btn) return;
+            btn.style.background = active ? '#ef4444' : '';
+            btn.style.color = active ? '#fff' : '';
+            btn.style.borderRadius = active ? '6px' : '';
+        }
+
+        // --- Swipe gesture: swipe RIGHT → open sidebar ---
+        let swipeStartX = 0, swipeStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            swipeStartX = e.touches[0].clientX;
+            swipeStartY = e.touches[0].clientY;
+        }, { passive: true });
+        document.addEventListener('touchend', (e) => {
+            if (window.innerWidth > 767) return;
+            const dx = e.changedTouches[0].clientX - swipeStartX;
+            const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
+            if (Math.abs(dx) < 60 || dy > 60) return; // must be mostly horizontal
+            const sb = document.getElementById('notebooksSidebar');
+            if (dx < -60 && !sb.classList.contains('mob-open')) toggleMobileSidebar(); // swipe left = open (RTL)
+            if (dx > 60 && sb.classList.contains('mob-open')) closeMobileSidebar(); // swipe right = close
+        }, { passive: true });
+
+        // --- Auto-hide toolbar on scroll, reveal on scroll up ---
+        let lastScrollY = 0;
+        const paperSheetEl = document.getElementById('paperSheet');
+        if (paperSheetEl) {
+            paperSheetEl.addEventListener('scroll', () => {
+                if (window.innerWidth > 767) return;
+                const curr = paperSheetEl.scrollTop;
+                const mfb = document.getElementById('mobileFormatBar');
+                const tabs = document.getElementById('pagesTabsContainer');
+                if (!mfb) return;
+                if (curr > lastScrollY + 8 && curr > 40) { // scrolling down
+                    mfb.style.transform = 'translateY(-100%)';
+                    mfb.style.transition = 'transform 0.2s';
+                    if (tabs) { tabs.style.transform = 'translateY(-100%)'; tabs.style.transition = 'transform 0.2s'; }
+                } else if (curr < lastScrollY - 8) { // scrolling up
+                    mfb.style.transform = '';
+                    if (tabs) tabs.style.transform = '';
+                }
+                lastScrollY = curr;
+            }, { passive: true });
+        }
+
+        // Mobile: swipe close on touchstart for toolbar sheet
+        document.getElementById('paperSheet')?.addEventListener('touchstart', () => {
+            if (toolbarSheetOpen) { toolbarSheetOpen = false; const s = document.getElementById('mobileToolbarSheet'); if(s) s.classList.remove('open'); }
+        }, { passive: true });
+
+    </script>
+
+    <!-- Mobile: Sidebar Backdrop -->
+    <div id="mobileSidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
+    <!-- Mobile: Bottom Navigation Bar -->
+    <nav id="mobileBottomNav" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black z-[190] h-14">
+        <div class="flex h-full">
+            <button id="mnav-dashboard" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('dashboard')">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">בית</span>
+            </button>
+            <button id="mnav-notebooks" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="toggleMobileSidebar()">
+                <i data-lucide="book-open" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">מחברות</span>
+            </button>
+            <button id="mnav-notebook" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400 relative" onclick="mobileNav('notebook')">
+                <!-- Middle button: slightly elevated -->
+                <span class="absolute -top-4 w-12 h-12 bg-black rounded-full flex items-center justify-center shadow-lg">
+                    <i data-lucide="edit-3" class="w-5 h-5 text-white"></i>
+                </span>
+                <span class="text-[9px] font-bold uppercase mt-4">כתוב</span>
+            </button>
+            <button id="mnav-todo" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('todo')">
+                <i data-lucide="list-todo" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">משימות</span>
+            </button>
+            <button id="mnav-glossary" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('glossary')">
+                <i data-lucide="library" class="w-5 h-5"></i>
+                <span class="text-[9px] font-bold uppercase">מילון</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile: FAB (quick new page when in notebook) -->
+    <button id="mobileFAB" onclick="if(activeNotebookId) openCreatePageModal(); else openNewNotebookModal();"
+        class="fixed right-4 z-[185] w-13 h-13 bg-black text-white shadow-[4px_4px_0_0_rgba(0,0,0,0.25)] items-center justify-center rounded-full transition-all active:scale-95"
+        style="bottom: 72px; width: 52px; height: 52px;" title="דף חדש">
+        <i data-lucide="plus" class="w-6 h-6"></i>
+    </button>
+
+</body>
+</html>
