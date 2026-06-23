@@ -98,144 +98,161 @@
         .pulse-active { animation: pulseIndicator 1.2s infinite ease-in-out; }
         #aiLoadingOverlay { backdrop-filter: blur(3px); }
 
+        /* touch-action: manipulation removes 300ms tap delay on all buttons */
+        button, a, [onclick] { touch-action: manipulation; }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* ===================== MOBILE STYLES ===================== */
-        #mobileBottomNav, #mobileFAB, #mobileFormatBar, #mobileSidebarBackdrop, #mobileToolbarSheet { display: none; }
-        
+        /* ===================== MOBILE ===================== */
+        /* Default: all mobile-only elements hidden */
+        #mobileBottomNav, #mobileFAB, #mobileFormatBar,
+        #mobileSidebarBackdrop, #mobileToolbarSheet { display: none; }
+        /* Helper classes for show/hide without Tailwind responsive prefix */
+        .mob-only  { display: none !important; }
+        .mob-only-blk { display: none !important; }
+        .desk-only { display: flex; }
+        .desk-only-blk { display: block; }
+
         @media (max-width: 767px) {
-            /* --- Core layout: lock body, account for header + bottom nav --- */
+            .mob-only     { display: flex !important; }
+            .mob-only-blk { display: block !important; }
+            .desk-only    { display: none !important; }
+            .desk-only-blk { display: none !important; }
+
+            /* Header: compact, always on top of backdrop */
+            #mainHeader {
+                height: 56px !important;
+                padding: 0 14px !important;
+                position: sticky !important;
+                top: 0 !important;
+                z-index: 210 !important;   /* above sidebar (200) + backdrop (190) */
+            }
+
+            /* Body / main */
             body { overflow: hidden; }
-            main { height: calc(100dvh - 56px) !important; padding-bottom: 56px !important; overflow: hidden; }
-            
-            /* --- Header compact --- */
-            #mainHeader { height: 56px; padding: 0 14px; }
-            #mainHeader .desktop-only { display: none !important; }
+            main {
+                height: calc(100dvh - 56px) !important;
+                overflow: hidden;
+                padding-bottom: 56px !important;
+            }
 
-            /* --- Sidebar: full-height overlay drawer, slides in from right --- */
-            #notebooksSidebar {
-                position: fixed !important;
-                top: 56px !important;
-                right: 0 !important;
-                bottom: 56px !important;
-                width: 88vw !important;
-                max-width: 310px !important;
-                z-index: 200 !important;
-                transform: translateX(105%) !important;
-                transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
-                box-shadow: -8px 0 32px rgba(0,0,0,0.18) !important;
-                border-left: 2px solid #000 !important;
+            /* Editor: zero padding */
+            #editorContainer { padding: 0 !important; }
+
+            /* Notebook view: full-width, proper flex-1 height chain */
+            #view-notebook {
+                max-width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+                overflow: hidden !important;
+            }
+            /* Other full-screen views */
+            #view-todo, #view-glossary, #view-calendar {
+                max-width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            #view-dashboard {
+                padding: 16px 14px 80px !important;
                 overflow-y: auto !important;
-                display: flex !important; /* override any hidden class */
+                justify-content: flex-start !important;
             }
-            /* When open: slide into view */
-            #notebooksSidebar.mob-open { transform: translateX(0) !important; }
+            /* Dashboard grid 2-col on mobile */
+            #view-dashboard > .grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
 
-            /* Backdrop */
-            #mobileSidebarBackdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.28s; }
-            #mobileSidebarBackdrop.visible { opacity: 1; pointer-events: auto; }
-
-            /* --- Editor: full width, zero padding --- */
-            #editorContainer { padding: 0 !important; width: 100% !important; }
-
-            /* --- Notebook view: edge-to-edge, proper flex height chain --- */
-            #view-notebook { 
-                max-width: 100% !important; 
-                border: none !important; 
-                box-shadow: none !important; 
-                overflow: hidden !important; /* CRITICAL: enables flex-1 height propagation */
-            }
-            #view-todo, #view-glossary, #view-calendar { 
-                border: none !important; 
-                box-shadow: none !important; 
-                max-width: 100% !important; 
-                overflow-y: auto !important;
-            }
-
-            /* --- Workspace header compact --- */
+            /* Workspace header */
             #workspaceHeader { padding: 6px 12px !important; }
-            #activeNotebookTitle { font-size: 0.9rem !important; }
+            #activeNotebookTitle { font-size: 0.88rem !important; }
+            #activeNotebookIcon { font-size: 1.1rem !important; }
 
-            /* --- Desktop toolbar hidden; mobile format bar shown --- */
+            /* Hide desktop toolbar, show mobile bar */
             .editor-toolbar-row { display: none !important; }
             #mobileFormatBar { display: flex !important; }
 
-            /* --- Page tabs bar: compact --- */
-            #pagesTabsContainer { overflow-x: auto !important; padding-top: 2px !important; min-height: 34px !important; }
+            /* Page tabs: scrollable row */
+            #pagesTabsContainer { overflow-x: auto !important; }
 
-            /* --- Paper: correct sizing so it doesn't overflow screen ---
-               NO min-height override — let flex-1 handle height naturally */
-            #noteContent { 
-                padding-top: 10px !important; 
-                padding-bottom: 80px !important;
+            /* Paper — let flex-1 control height, no min-height override */
+            #noteContent {
                 min-height: unset !important;
+                padding-top: 10px !important;
+                padding-bottom: 100px !important;
             }
-            #noteContent.paper-rtl { padding-right: 48px !important; padding-left: 10px !important; }
-            #noteContent.paper-ltr { padding-left: 48px !important; padding-right: 10px !important; }
-            .paper-rtl::before { right: 40px !important; }
-            .paper-ltr::before { left: 40px !important; }
+            #noteContent.paper-rtl { padding-right: 50px !important; padding-left: 10px !important; }
+            #noteContent.paper-ltr { padding-left: 50px !important; padding-right: 10px !important; }
+            .paper-rtl::before { right: 42px !important; }
+            .paper-ltr::before { left: 42px !important; }
 
-            /* --- Dashboard compact --- */
-            #view-dashboard { padding: 16px 12px 80px !important; overflow-y: auto !important; }
+            /* Backdrop: BELOW header */
+            #mobileSidebarBackdrop {
+                display: none;
+                position: fixed;
+                top: 56px; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 190;
+                opacity: 0;
+                transition: opacity 0.25s;
+            }
+            #mobileSidebarBackdrop.visible { display: block; opacity: 1; }
 
-            /* --- Show bottom nav and FAB --- */
+            /* Bottom nav */
             #mobileBottomNav { display: flex !important; }
-            #mobileFAB { display: flex !important; }
+            #mobileFAB      { display: flex !important; }
 
-            /* --- Mobile toolbar sheet --- */
-            #mobileToolbarSheet { 
-                display: block !important; 
-                position: fixed !important; 
-                bottom: 56px !important; 
-                left: 0; right: 0; 
-                background: #fff; 
-                border-top: 2px solid #000; 
-                z-index: 150; 
-                padding: 12px 14px 16px; 
-                transform: translateY(100%); 
-                transition: transform 0.25s cubic-bezier(0.4,0,0.2,1); 
+            /* Toolbar sheet */
+            #mobileToolbarSheet {
+                display: block !important;
+                position: fixed !important;
+                bottom: 56px !important;
+                left: 0; right: 0;
+                background: #fff;
+                border-top: 2px solid #000;
+                z-index: 160;
+                padding: 12px 14px 18px;
+                transform: translateY(100%);
+                transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
             }
             #mobileToolbarSheet.open { transform: translateY(0) !important; }
-            #mobileToolbarSheet .sheet-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
-            #mobileToolbarSheet button { 
-                display: flex; align-items: center; gap: 5px; 
-                padding: 8px 12px; border: 1.5px solid #000; 
-                font-size: 12px; font-weight: 700; background: #fff; 
-                flex-shrink: 0; border-radius: 2px;
+            #mobileToolbarSheet .sheet-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 3px 0; }
+            #mobileToolbarSheet button {
+                display: flex; align-items: center; gap: 5px;
+                padding: 8px 12px; border: 1.5px solid #000;
+                font-size: 12px; font-weight: 700; background: #fff;
+                flex-shrink: 0;
             }
             #mobileToolbarSheet button:active { background: #f3f4f6; }
 
-            /* --- Focus mode on mobile --- */
+            /* Focus mode */
             .focus-mode-active #mobileFormatBar { display: none !important; }
-            .focus-mode-active #pagesTabsContainer { display: none !important; }
-            .focus-mode-active #mobileBottomNav { display: none !important; }
-            .focus-mode-active #mobileFAB { display: none !important; }
-            .focus-mode-active main { padding-bottom: 0 !important; }
+            .focus-mode-active #mobileBottomNav  { display: none !important; }
+            .focus-mode-active #mobileFAB         { display: none !important; }
+            .focus-mode-active main               { padding-bottom: 0 !important; }
         }
 
-        /* Mobile format bar base styles (always defined, display controlled by media query) */
-        #mobileFormatBar { 
-            align-items: center; 
-            background: #fff; 
-            border-bottom: 2px solid #000; 
-            height: 44px; 
-            overflow-x: auto; 
+        /* Mobile format bar (display toggled by media query) */
+        #mobileFormatBar {
+            align-items: center;
+            background: #fff;
+            border-bottom: 2px solid #000;
+            height: 44px;
+            overflow-x: auto;
             overflow-y: hidden;
-            gap: 1px; 
-            padding: 0 8px; 
-            flex-shrink: 0; 
+            gap: 1px;
+            padding: 0 6px;
+            flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
         }
-        #mobileFormatBar button { 
-            flex-shrink: 0; 
-            min-width: 38px; 
-            height: 36px; 
-            display: flex; align-items: center; justify-content: center; 
-            border-radius: 6px; 
-            font-weight: 700; 
-            border: none; 
-            background: transparent; 
+        #mobileFormatBar::-webkit-scrollbar { display: none; }
+        #mobileFormatBar button {
+            flex-shrink: 0;
+            min-width: 38px; height: 36px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 5px;
+            font-weight: 700; border: none; background: transparent;
             font-size: 13px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
         }
         #mobileFormatBar button:active { background: #e5e7eb; }
         #mobileFormatBar .mob-sep { width: 1px; height: 20px; background: #d1d5db; flex-shrink: 0; margin: 0 3px; }
@@ -246,24 +263,32 @@
     <!-- סרגל עליון ראשי -->
     <header id="mainHeader" class="bg-white border-b-2 border-black px-6 py-3 flex items-center justify-between sticky top-0 z-40">
         <div class="flex items-center gap-3">
-            <!-- Mobile hamburger (sidebar toggle) -->
-            <button class="hidden max-md:flex items-center justify-center w-9 h-9 border-2 border-black bg-black text-white" onclick="toggleMobileSidebar()" title="תפריט">
+            <!-- Mobile: hamburger (mob-only = hidden on desktop, flex on mobile) -->
+            <button class="mob-only items-center justify-center w-9 h-9 border-2 border-black bg-black text-white flex-shrink-0"
+                    onclick="toggleMobileSidebar()" title="תפריט" style="touch-action:manipulation;">
                 <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
-            <!-- Desktop logo -->
-            <div class="flex items-center gap-3 cursor-pointer hover:opacity-70 transition group desktop-only" onclick="toggleNotebooksSidebar()" title="הצג/הסתר סביבת מחברות">
+            <!-- Desktop: clickable logo -->
+            <div class="desk-only items-center gap-3 cursor-pointer hover:opacity-70 transition group"
+                 onclick="toggleNotebooksSidebar()" title="הצג/הסתר">
                 <div class="border-2 border-black p-1.5 bg-black text-white group-hover:bg-zinc-800 transition">
                     <i data-lucide="book" class="w-5 h-5"></i>
                 </div>
                 <h1 class="text-xl font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
             </div>
-            <!-- Mobile logo (no click) -->
-            <h1 class="hidden max-md:block text-lg font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
+            <!-- Mobile: static logo text -->
+            <h1 class="mob-only-blk text-lg font-bold uppercase tracking-wider mono-font text-black">ENOTE</h1>
         </div>
-        <div class="flex items-center gap-4">
-            <button onclick="switchMainView('dashboard')" class="desktop-only text-xs font-bold hover:underline flex items-center gap-1"><i data-lucide="layout-dashboard" class="w-4 h-4"></i> לוח בקרה ראשי</button>
-            <button onclick="openGlobalSearch()" class="hidden max-md:flex items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 transition" title="חיפוש"><i data-lucide="search" class="w-5 h-5"></i></button>
-            <span id="apiKeyStatusIndicator" class="desktop-only text-xs font-bold text-zinc-500 bg-zinc-100 border border-zinc-300 py-1 px-2.5 rounded-sm">Gemini AI</span>
+        <div class="flex items-center gap-3">
+            <!-- Desktop nav -->
+            <button onclick="switchMainView('dashboard')" class="desk-only items-center gap-1 text-xs font-bold hover:underline">
+                <i data-lucide="layout-dashboard" class="w-4 h-4"></i> לוח בקרה ראשי
+            </button>
+            <!-- Mobile search icon -->
+            <button onclick="openGlobalSearch()" class="mob-only items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 transition" title="חיפוש">
+                <i data-lucide="search" class="w-5 h-5"></i>
+            </button>
+            <span id="apiKeyStatusIndicator" class="desk-only-blk text-xs font-bold text-zinc-500 bg-zinc-100 border border-zinc-300 py-1 px-2.5">Gemini AI</span>
         </div>
     </header>
 
@@ -1319,9 +1344,11 @@
             const nb = notebooks.find(n=>n.id===activeNotebookId); 
             if (nb) { const p = nb.pages.find(x=>x.id===activePageId); if (p) snapshotPageVersion(p); }
             activePageId = id; historyStack = []; redoStack = []; renderTabs(); loadPageData();
-            // On mobile: close the sidebar after picking a page and switch to write view
-            if (window.innerWidth <= 767) { 
-                setTimeout(() => { closeMobileSidebar(); updateMobileNavHighlight && updateMobileNavHighlight('notebook'); }, 50);
+            // Mobile: close sidebar, jump to write view
+            if (typeof IS_MOBILE === 'function' && IS_MOBILE()) {
+                closeMobileSidebar && closeMobileSidebar();
+                switchMainView && switchMainView('notebook');
+                updateMobileNavHighlight && updateMobileNavHighlight('notebook');
             }
         }
 
@@ -2096,37 +2123,69 @@
 
         /* ===================== MOBILE FEATURES ===================== */
 
-        // --- Sidebar drawer ---
-        function toggleMobileSidebar() {
+        /* ===================== MOBILE FEATURES ===================== */
+
+        const IS_MOBILE = () => window.innerWidth <= 767;
+
+        // ---- Sidebar: 100% inline-style driven, no CSS class conflicts ----
+
+        function openMobileSidebar() {
             const sb = document.getElementById('notebooksSidebar');
             const bd = document.getElementById('mobileSidebarBackdrop');
             if (!sb) return;
-            const isOpen = sb.classList.contains('mob-open');
-            if (isOpen) {
-                sb.classList.remove('mob-open');
-                bd.classList.remove('visible');
-            } else {
-                // Always clear any hidden class that desktop/focus-mode may have applied
-                sb.classList.remove('hidden');
-                sb.classList.add('mob-open');
-                bd.classList.add('visible');
-            }
+
+            // Inline styles beat everything — Tailwind .hidden, media queries, all of it
+            sb.style.cssText = [
+                'position:fixed',
+                'top:56px',
+                'right:0',
+                'bottom:56px',
+                'left:auto',
+                'width:min(88vw,310px)',
+                'height:auto',
+                'display:flex',
+                'flex-direction:column',
+                'overflow-y:auto',
+                'z-index:200',
+                'background:#fff',
+                'border-left:2px solid #000',
+                'border-right:none',
+                'box-shadow:-8px 0 32px rgba(0,0,0,0.22)',
+                'transform:none',
+                'transition:none',
+                'padding:0'
+            ].join(';');
+            sb.dataset.mobOpen = '1';
+
+            if (bd) { bd.style.display = 'block'; bd.offsetHeight; bd.style.opacity = '1'; }
+            
+            // Re-render notebooks so inline page list is visible and icons load
+            renderNotebooks();
         }
 
         function closeMobileSidebar() {
             const sb = document.getElementById('notebooksSidebar');
             const bd = document.getElementById('mobileSidebarBackdrop');
-            if (sb) sb.classList.remove('mob-open');
-            if (bd) bd.classList.remove('visible');
+            if (!sb) return;
+            // Clear ALL inline styles → desktop CSS takes over naturally
+            sb.style.cssText = '';
+            sb.dataset.mobOpen = '0';
+            if (bd) { bd.style.opacity = '0'; setTimeout(() => { bd.style.display = 'none'; }, 250); }
         }
 
-        // --- Bottom navigation ---
+        function toggleMobileSidebar() {
+            const sb = document.getElementById('notebooksSidebar');
+            if (!sb) return;
+            if (sb.dataset.mobOpen === '1') closeMobileSidebar();
+            else openMobileSidebar();
+        }
+
+        // ---- Bottom navigation ----
         function mobileNav(viewName) {
             closeMobileSidebar();
             switchMainView(viewName);
         }
 
-        // --- Highlight active bottom nav button ---
         function updateMobileNavHighlight(viewName) {
             document.querySelectorAll('.mnav-btn').forEach(btn => {
                 btn.classList.remove('text-black');
@@ -2136,7 +2195,7 @@
             if (active) { active.classList.add('text-black'); active.classList.remove('text-zinc-400'); }
         }
 
-        // --- Mobile toolbar sheet (slide-up) ---
+        // ---- Toolbar sheet ----
         let toolbarSheetOpen = false;
         function toggleMobileToolbarSheet() {
             toolbarSheetOpen = !toolbarSheetOpen;
@@ -2148,13 +2207,11 @@
             const sheet = document.getElementById('mobileToolbarSheet');
             if (sheet) sheet.classList.remove('open');
         }
-
-        // Close toolbar sheet when tapping the paper
         document.getElementById('paperSheet')?.addEventListener('touchstart', () => {
             if (toolbarSheetOpen) closeMobileToolbarSheet();
         }, { passive: true });
 
-        // --- Voice input (Web Speech API) ---
+        // ---- Voice input ----
         let voiceRecognition = null;
         function startVoiceInput() {
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -2179,7 +2236,10 @@
                 voiceRecognition = null; updateVoiceBtn(false);
             };
             voiceRecognition.onend = () => { voiceRecognition = null; updateVoiceBtn(false); };
-            try { voiceRecognition.start(); } catch(e) { showToast('שגיאה בהפעלת המיקרופון.', 'error'); voiceRecognition = null; updateVoiceBtn(false); }
+            try { voiceRecognition.start(); } catch(e) {
+                showToast('שגיאה בהפעלת המיקרופון.', 'error');
+                voiceRecognition = null; updateVoiceBtn(false);
+            }
         }
         function updateVoiceBtn(active) {
             const btn = document.getElementById('voiceBtn');
@@ -2188,29 +2248,27 @@
             btn.style.color = active ? '#fff' : '';
         }
 
-        // --- Swipe gesture: only trigger from within 30px of the right screen edge ---
+        // ---- Swipe from right edge to open sidebar ----
         let swipeStartX = 0, swipeStartY = 0, swipeEdgeStart = false;
         document.addEventListener('touchstart', (e) => {
             swipeStartX = e.touches[0].clientX;
             swipeStartY = e.touches[0].clientY;
-            // Only count as potential edge-swipe if starting near the right edge
-            swipeEdgeStart = (window.innerWidth - swipeStartX) < 30;
+            // Right edge swipe (RTL layout — sidebar is on the right)
+            swipeEdgeStart = swipeStartX > window.innerWidth - 28;
         }, { passive: true });
 
         document.addEventListener('touchend', (e) => {
-            if (window.innerWidth > 767) return;
+            if (!IS_MOBILE()) return;
             const dx = e.changedTouches[0].clientX - swipeStartX;
             const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
             const sb = document.getElementById('notebooksSidebar');
-            // Open: must start from right edge and swipe left (RTL: towards center)
-            if (swipeEdgeStart && dx < -50 && dy < 70 && !sb.classList.contains('mob-open')) {
-                toggleMobileSidebar();
-            }
-            // Close: must be inside open sidebar and swipe right
-            if (sb.classList.contains('mob-open') && dx > 60 && dy < 70) {
-                closeMobileSidebar();
-            }
+            // Open: edge swipe leftward (toward center in RTL)
+            if (swipeEdgeStart && dx < -45 && dy < 60) openMobileSidebar();
+            // Close: swipe rightward while open
+            if (sb && sb.dataset.mobOpen === '1' && dx > 55 && dy < 60) closeMobileSidebar();
         }, { passive: true });
+
+        // ---- On selectPage, close sidebar and switch to notebook view — handled inside selectPage itself ----
 
     </script>
 
