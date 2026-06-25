@@ -104,158 +104,119 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* ===================== MOBILE ===================== */
-        /* Default: all mobile-only elements hidden */
-        #mobileBottomNav, #mobileFAB, #mobileFormatBar,
-        #mobileSidebarBackdrop, #mobileToolbarSheet { display: none; }
-        /* Helper classes for show/hide without Tailwind responsive prefix */
-        .mob-only  { display: none !important; }
-        .mob-only-blk { display: none !important; }
-        .desk-only { display: flex; }
-        .desk-only-blk { display: block; }
+        /* ══════════════ MOBILE (≤767px) ══════════════ */
+        /* Mobile-only elements: hidden by default, shown by JS or media query */
+        #mBackdrop { display:none; position:fixed; top:56px; left:0; right:0; bottom:0; background:rgba(0,0,0,.52); z-index:300; }
+        #mBottomNav { display:none; }
+        #mFormatBar { display:none; }
+        #mSheet     { display:none; }
 
-        @media (max-width: 767px) {
-            .mob-only     { display: flex !important; }
-            .mob-only-blk { display: block !important; }
-            .desk-only    { display: none !important; }
-            .desk-only-blk { display: none !important; }
+        @media (max-width:767px) {
+            /* Lock body scroll – main handles it */
+            body { overflow:hidden; }
+            main { height:calc(100dvh - 56px) !important; overflow:hidden; padding-bottom:56px !important; }
 
-            /* Header: compact, always on top of backdrop */
-            #mainHeader {
-                height: 56px !important;
-                padding: 0 14px !important;
-                position: sticky !important;
-                top: 0 !important;
-                z-index: 210 !important;   /* above sidebar (200) + backdrop (190) */
+            /* Header: compact + always on top */
+            #mainHeader { height:56px !important; padding:0 14px !important; z-index:400 !important; }
+
+            /* Strip padding from editor so views fill edge-to-edge */
+            #editorContainer { padding:0 !important; }
+
+            /* Notebook view: full-width card, overflow:hidden so flex-1 chain works */
+            #view-notebook { max-width:100% !important; border:none !important; box-shadow:none !important; overflow:hidden !important; }
+
+            /* Other views: edge-to-edge, scrollable */
+            #view-todo, #view-glossary, #view-calendar { max-width:100% !important; border:none !important; box-shadow:none !important; }
+            #view-dashboard { padding:14px 12px 80px !important; overflow-y:auto !important;
+                              align-items:flex-start !important; justify-content:flex-start !important; }
+
+            /* Workspace header: compact */
+            #workspaceHeader { padding:6px 12px !important; }
+            #activeNotebookTitle { font-size:.88rem !important; }
+
+            /* Hide desktop toolbar row */
+            .editor-toolbar-row { display:none !important; }
+
+            /* Page tabs: single scrollable row */
+            #pagesTabsContainer { overflow-x:auto !important; }
+
+            /* Paper: natural height (flex-1 handles it), generous bottom padding */
+            #noteContent { min-height:unset !important; padding-top:10px !important; padding-bottom:100px !important; }
+            #noteContent.paper-rtl { padding-right:50px !important; padding-left:10px !important; }
+            #noteContent.paper-ltr { padding-left:50px !important; padding-right:10px !important; }
+            .paper-rtl::before { right:42px !important; }
+            .paper-ltr::before { left:42px !important; }
+
+            /* Show mobile chrome */
+            #mBottomNav { display:flex !important; }
+            #mFormatBar { display:flex !important; }
+
+            /* Slide-up tool sheet */
+            #mSheet {
+                display:block !important; position:fixed !important;
+                bottom:56px !important; left:0; right:0;
+                background:#fff; border-top:2px solid #000;
+                z-index:350; padding:14px 14px 20px;
+                transform:translateY(100%);
+                transition:transform .22s cubic-bezier(.4,0,.2,1);
             }
-
-            /* Body / main */
-            body { overflow: hidden; }
-            main {
-                height: calc(100dvh - 56px) !important;
-                overflow: hidden;
-                padding-bottom: 56px !important;
+            #mSheet.open { transform:translateY(0) !important; }
+            #mSheet .sr  { display:flex; flex-wrap:wrap; gap:8px; padding:3px 0; }
+            #mSheet .sr button {
+                display:flex; align-items:center; gap:5px;
+                padding:8px 12px; border:1.5px solid #000;
+                font-size:12px; font-weight:700; background:#fff; flex-shrink:0;
             }
+            #mSheet .sr button:active { background:#f3f4f6; }
 
-            /* Editor: zero padding */
-            #editorContainer { padding: 0 !important; }
-
-            /* Notebook view: full-width, proper flex-1 height chain */
-            #view-notebook {
-                max-width: 100% !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
-            }
-            /* Other full-screen views */
-            #view-todo, #view-glossary, #view-calendar {
-                max-width: 100% !important;
-                border: none !important;
-                box-shadow: none !important;
-            }
-            #view-dashboard {
-                padding: 16px 14px 80px !important;
-                overflow-y: auto !important;
-                justify-content: flex-start !important;
-            }
-            /* Dashboard grid 2-col on mobile */
-            #view-dashboard > .grid { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
-
-            /* Workspace header */
-            #workspaceHeader { padding: 6px 12px !important; }
-            #activeNotebookTitle { font-size: 0.88rem !important; }
-            #activeNotebookIcon { font-size: 1.1rem !important; }
-
-            /* Hide desktop toolbar, show mobile bar */
-            .editor-toolbar-row { display: none !important; }
-            #mobileFormatBar { display: flex !important; }
-
-            /* Page tabs: scrollable row */
-            #pagesTabsContainer { overflow-x: auto !important; }
-
-            /* Paper — let flex-1 control height, no min-height override */
-            #noteContent {
-                min-height: unset !important;
-                padding-top: 10px !important;
-                padding-bottom: 100px !important;
-            }
-            #noteContent.paper-rtl { padding-right: 50px !important; padding-left: 10px !important; }
-            #noteContent.paper-ltr { padding-left: 50px !important; padding-right: 10px !important; }
-            .paper-rtl::before { right: 42px !important; }
-            .paper-ltr::before { left: 42px !important; }
-
-            /* Backdrop: BELOW header */
-            #mobileSidebarBackdrop {
-                display: none;
-                position: fixed;
-                top: 56px; left: 0; right: 0; bottom: 0;
-                background: rgba(0,0,0,0.5);
-                z-index: 190;
-                opacity: 0;
-                transition: opacity 0.25s;
-            }
-            #mobileSidebarBackdrop.visible { display: block; opacity: 1; }
-
-            /* Bottom nav */
-            #mobileBottomNav { display: flex !important; }
-            #mobileFAB      { display: flex !important; }
-
-            /* Toolbar sheet */
-            #mobileToolbarSheet {
-                display: block !important;
-                position: fixed !important;
-                bottom: 56px !important;
-                left: 0; right: 0;
-                background: #fff;
-                border-top: 2px solid #000;
-                z-index: 160;
-                padding: 12px 14px 18px;
-                transform: translateY(100%);
-                transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
-            }
-            #mobileToolbarSheet.open { transform: translateY(0) !important; }
-            #mobileToolbarSheet .sheet-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 3px 0; }
-            #mobileToolbarSheet button {
-                display: flex; align-items: center; gap: 5px;
-                padding: 8px 12px; border: 1.5px solid #000;
-                font-size: 12px; font-weight: 700; background: #fff;
-                flex-shrink: 0;
-            }
-            #mobileToolbarSheet button:active { background: #f3f4f6; }
-
-            /* Focus mode */
-            .focus-mode-active #mobileFormatBar { display: none !important; }
-            .focus-mode-active #mobileBottomNav  { display: none !important; }
-            .focus-mode-active #mobileFAB         { display: none !important; }
-            .focus-mode-active main               { padding-bottom: 0 !important; }
+            /* Focus mode: strip mobile chrome */
+            .focus-mode-active #mFormatBar,
+            .focus-mode-active #pagesTabsContainer,
+            .focus-mode-active #mBottomNav { display:none !important; }
+            .focus-mode-active main { padding-bottom:0 !important; }
         }
 
-        /* Mobile format bar (display toggled by media query) */
-        #mobileFormatBar {
-            align-items: center;
-            background: #fff;
-            border-bottom: 2px solid #000;
-            height: 44px;
-            overflow-x: auto;
-            overflow-y: hidden;
-            gap: 1px;
-            padding: 0 6px;
-            flex-shrink: 0;
-            -webkit-overflow-scrolling: touch;
+        /* ── Mobile format bar base (display toggled by media query) ── */
+        #mFormatBar {
+            align-items:center; background:#fff; border-bottom:2px solid #000;
+            height:44px; overflow-x:auto; overflow-y:hidden;
+            gap:0; padding:0 4px; flex-shrink:0;
+            -webkit-overflow-scrolling:touch;
         }
-        #mobileFormatBar::-webkit-scrollbar { display: none; }
-        #mobileFormatBar button {
-            flex-shrink: 0;
-            min-width: 38px; height: 36px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 5px;
-            font-weight: 700; border: none; background: transparent;
-            font-size: 13px;
-            -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+        #mFormatBar::-webkit-scrollbar { display:none; }
+        #mFormatBar > button {
+            flex-shrink:0; min-width:38px; height:38px;
+            display:flex; align-items:center; justify-content:center;
+            border-radius:4px; font-weight:700; border:none;
+            background:transparent; font-size:14px;
+            -webkit-tap-highlight-color:transparent;
         }
-        #mobileFormatBar button:active { background: #e5e7eb; }
-        #mobileFormatBar .mob-sep { width: 1px; height: 20px; background: #d1d5db; flex-shrink: 0; margin: 0 3px; }
+        #mFormatBar > button:active { background:#e5e7eb; }
+        #mFormatBar .sp { width:1px; height:20px; background:#d1d5db; flex-shrink:0; margin:0 2px; }
+
+        /* ── Mobile bottom nav ── */
+        #mBottomNav {
+            position:fixed; bottom:0; left:0; right:0; height:56px;
+            background:#fff; border-top:2px solid #000; z-index:400;
+            align-items:stretch;
+        }
+        #mBottomNav > button {
+            flex:1; display:flex; flex-direction:column;
+            align-items:center; justify-content:center; gap:2px;
+            border:none; background:transparent; color:#9ca3af;
+            font-size:9px; font-weight:700; text-transform:uppercase;
+            -webkit-tap-highlight-color:transparent; position:relative;
+        }
+        #mBottomNav > button.active { color:#000; }
+        #mBottomNav > button svg   { width:20px; height:20px; }
+        /* Elevated centre write button */
+        #mNavWriteCircle {
+            position:absolute; top:-20px;
+            width:50px; height:50px; border-radius:50%;
+            background:#000; display:flex; align-items:center; justify-content:center;
+            box-shadow:0 4px 14px rgba(0,0,0,.35);
+        }
+        #mNavWriteCircle svg { width:22px; height:22px; color:#fff; }
     </style>
 </head>
 <body class="bg-zinc-50 text-black min-h-screen flex flex-col">
@@ -265,7 +226,7 @@
         <div class="flex items-center gap-3">
             <!-- Mobile: hamburger (mob-only = hidden on desktop, flex on mobile) -->
             <button class="mob-only items-center justify-center w-9 h-9 border-2 border-black bg-black text-white flex-shrink-0"
-                    onclick="toggleMobileSidebar()" title="תפריט" style="touch-action:manipulation;">
+                    onclick="openSidebar()" title="תפריט" style="touch-action:manipulation;">
                 <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
             <!-- Desktop: clickable logo -->
@@ -507,50 +468,51 @@
 
                 <div class="bg-zinc-200/50 border-b-2 border-black px-2 pt-1 flex items-end gap-1 overflow-x-auto no-scrollbar" id="pagesTabsContainer"></div>
 
-                <!-- Mobile Format Bar (shown only on mobile, replaces desktop toolbar) -->
-                <div id="mobileFormatBar">
-                    <button onclick="setPageDirection('rtl')" title="RTL" class="text-xs font-black">א</button>
-                    <button onclick="setPageDirection('ltr')" title="LTR" class="text-xs font-black">A</button>
-                    <div class="mob-sep"></div>
-                    <button onclick="formatDoc('bold')" title="מודגש"><b class="text-sm">B</b></button>
-                    <button onclick="formatDoc('italic')" title="נטוי"><i class="text-sm">I</i></button>
-                    <button onclick="formatDoc('underline')" title="קו תחתון"><u class="text-sm">U</u></button>
-                    <div class="mob-sep"></div>
-                    <button onclick="formatBlock('h1')" title="כותרת" class="text-xs font-black">H1</button>
-                    <button onclick="formatBlock('h2')" title="כותרת משנה" class="text-xs font-black">H2</button>
-                    <div class="mob-sep"></div>
-                    <button onclick="highlightText('#fef08a')" title="סמן" style="font-size:16px;">🖊</button>
-                    <button onclick="highlightText('transparent')" title="הסר סימון" class="text-red-500 text-xs font-bold">✕</button>
-                    <div class="mob-sep"></div>
-                    <button onclick="startVoiceInput()" title="קלט קולי" id="voiceBtn"><i data-lucide="mic" class="w-4 h-4"></i></button>
-                    <div class="mob-sep"></div>
-                    <button onclick="toggleMobileToolbarSheet()" title="עוד אפשרויות" class="text-zinc-600 font-black text-lg px-2">⋯</button>
+                <!-- ── Mobile Format Bar ── -->
+                <div id="mFormatBar">
+                    <button onclick="setPageDirection('rtl')" title="RTL"><b style="font-size:14px;">א</b></button>
+                    <button onclick="setPageDirection('ltr')" title="LTR"><b style="font-size:14px;">A</b></button>
+                    <div class="sp"></div>
+                    <button onclick="formatDoc('bold')" title="Bold"><b>B</b></button>
+                    <button onclick="formatDoc('italic')" title="Italic"><i>I</i></button>
+                    <button onclick="formatDoc('underline')" title="Underline"><u>U</u></button>
+                    <div class="sp"></div>
+                    <button onclick="formatBlock('h1')"><b style="font-size:12px;">H1</b></button>
+                    <button onclick="formatBlock('h2')"><b style="font-size:11px;">H2</b></button>
+                    <div class="sp"></div>
+                    <button onclick="highlightText('#fef08a')" style="font-size:17px;">🖊</button>
+                    <button onclick="highlightText('transparent')" style="color:#ef4444; font-weight:900; font-size:13px;">✕</button>
+                    <div class="sp"></div>
+                    <button onclick="startVoice()" id="mVoiceBtn"><i data-lucide="mic" class="w-4 h-4"></i></button>
+                    <div class="sp"></div>
+                    <button onclick="toggleSheet()" style="font-size:22px; min-width:44px; letter-spacing:-1px;">···</button>
                 </div>
 
-                <!-- Mobile Toolbar Sheet (slide-up panel with extra tools) -->
-                <div id="mobileToolbarSheet">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-black uppercase tracking-wider text-zinc-500">כלים נוספים</span>
-                        <button onclick="toggleMobileToolbarSheet()" class="text-zinc-400 text-lg font-bold leading-none">×</button>
+                <!-- ── Mobile Tool Sheet (slides up from bottom) ── -->
+                <div id="mSheet">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <span style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#6b7280;">כלים נוספים</span>
+                        <button onclick="closeSheet()" style="font-size:24px; font-weight:700; color:#9ca3af; background:none; border:none; line-height:1; padding:0;">×</button>
                     </div>
-                    <div class="sheet-row">
-                        <button onclick="changePageType('ruled'); toggleMobileToolbarSheet()"><i data-lucide="align-left" class="w-3.5 h-3.5"></i> שורות</button>
-                        <button onclick="changePageType('grid'); toggleMobileToolbarSheet()"><i data-lucide="grid" class="w-3.5 h-3.5"></i> משבצות</button>
-                        <button onclick="changePageType('canvas'); toggleMobileToolbarSheet()"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> שרטוט</button>
+                    <div class="sr">
+                        <button onclick="changePageType('ruled');closeSheet()"><i data-lucide="align-left" class="w-3.5 h-3.5"></i> שורות</button>
+                        <button onclick="changePageType('grid');closeSheet()"><i data-lucide="grid" class="w-3.5 h-3.5"></i> משבצות</button>
+                        <button onclick="changePageType('canvas');closeSheet()"><i data-lucide="pencil" class="w-3.5 h-3.5"></i> שרטוט</button>
                     </div>
-                    <div class="sheet-row">
-                        <button onclick="changeZoom(1); toggleMobileToolbarSheet()"><i data-lucide="zoom-in" class="w-3.5 h-3.5"></i> A+</button>
-                        <button onclick="changeZoom(-1); toggleMobileToolbarSheet()"><i data-lucide="zoom-out" class="w-3.5 h-3.5"></i> A-</button>
-                        <button onclick="insertCodeBlock(); toggleMobileToolbarSheet()"><i data-lucide="code" class="w-3.5 h-3.5"></i> קוד</button>
+                    <div class="sr">
+                        <button onclick="changeZoom(1);closeSheet()">A+</button>
+                        <button onclick="changeZoom(-1);closeSheet()">A-</button>
+                        <button onclick="insertCodeBlock();closeSheet()"><i data-lucide="code" class="w-3.5 h-3.5"></i> קוד</button>
+                        <button onmousedown="event.preventDefault();captureGlossarySelection();" onclick="addSelectionToGlossary();closeSheet()"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i> מונח</button>
                     </div>
-                    <div class="sheet-row">
-                        <button onmousedown="event.preventDefault(); captureGlossarySelection();" onclick="addSelectionToGlossary(); toggleMobileToolbarSheet()"><i data-lucide="book-marked" class="w-3.5 h-3.5"></i> מונח</button>
-                        <button onclick="openVersionHistory(); toggleMobileToolbarSheet()"><i data-lucide="history" class="w-3.5 h-3.5"></i> היסטוריה</button>
-                        <button onclick="document.getElementById('aiFileInput').click(); toggleMobileToolbarSheet()"><i data-lucide="upload" class="w-3.5 h-3.5"></i> העלאה</button>
-                        <button onclick="savePageAsPDF(); toggleMobileToolbarSheet()"><i data-lucide="download" class="w-3.5 h-3.5"></i> PDF</button>
+                    <div class="sr">
+                        <button onclick="openVersionHistory();closeSheet()"><i data-lucide="history" class="w-3.5 h-3.5"></i> גרסאות</button>
+                        <button onclick="document.getElementById('aiFileInput').click();closeSheet()"><i data-lucide="upload" class="w-3.5 h-3.5"></i> העלאה</button>
+                        <button onclick="savePageAsPDF();closeSheet()"><i data-lucide="download" class="w-3.5 h-3.5"></i> PDF</button>
+                        <button onclick="openGlobalSearch();closeSheet()"><i data-lucide="search" class="w-3.5 h-3.5"></i> חיפוש</button>
                     </div>
                 </div>
-                
+
                 <div id="paperWrapper" class="flex-1 relative overflow-hidden bg-zinc-100">
                     <!-- הוספת לכידת לחיצה לגוף הדף להבטחת כתיבה ופוקוס מלאים בכל מקום -->
                     <div id="paperSheet" class="absolute inset-0 overflow-y-auto bg-zinc-50 cursor-text" onclick="if(!event.target.closest('.code-block-container')) document.getElementById('noteContent').focus()">
@@ -905,7 +867,7 @@
             if (viewName === 'dashboard') renderDashboardReview();
             if (viewName === 'notebook') updateView();
             
-            updateMobileNavHighlight && updateMobileNavHighlight(viewName);
+            /* mobile nav highlight synced in switchMainView patch below */
             lucide.createIcons();
         }
 
@@ -1346,9 +1308,9 @@
             activePageId = id; historyStack = []; redoStack = []; renderTabs(); loadPageData();
             // Mobile: close sidebar, jump to write view
             if (typeof IS_MOBILE === 'function' && IS_MOBILE()) {
-                closeMobileSidebar && closeMobileSidebar();
+                if (typeof closeSidebar === 'function') closeSidebar();
                 switchMainView && switchMainView('notebook');
-                updateMobileNavHighlight && updateMobileNavHighlight('notebook');
+                if (typeof setMNavActive === 'function') setMNavActive('write');
             }
         }
 
@@ -2121,195 +2083,203 @@
             const modal = document.getElementById('versionHistoryModal'); modal.classList.add('hidden'); modal.classList.remove('flex');
         }
 
-        /* ===================== MOBILE FEATURES ===================== */
+        /* ══════════════════════════════════════════════════════════
+           MOBILE  –  written from scratch
+           Key principle: sidebar shown/hidden entirely via JS
+           Object.assign(el.style, …) beats Tailwind .hidden,
+           !important rules, media queries – everything.
+           ══════════════════════════════════════════════════════════ */
 
-        /* ===================== MOBILE FEATURES ===================== */
+        // ─── Detect mobile ──────────────────────────────────────────
+        function isMobile() { return window.innerWidth <= 767; }
 
-        const IS_MOBILE = () => window.innerWidth <= 767;
+        // ─── Swap header elements on load & resize ──────────────────
+        function applyMobileLayout() {
+            const mob = isMobile();
+            const s   = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? (el.tagName === 'BUTTON' || el.tagName === 'NAV' || el.tagName === 'DIV' ? 'flex' : 'block') : 'none'; };
+            s('desktopLogo',           !mob);
+            s('mobileLogoRow',          mob);
+            s('desktopDashBtn',        !mob);
+            s('apiKeyStatusIndicator', !mob);
+            s('mobileSearchBtn',        mob);
+            // Strip editorContainer padding on mobile (sm:p-6 from Tailwind CDN can't be overridden reliably via CSS alone)
+            const ec = document.getElementById('editorContainer');
+            if (ec) ec.style.padding = mob ? '0' : '';
+        }
+        window.addEventListener('resize', applyMobileLayout);
 
-        // ---- Sidebar: 100% inline-style driven, no CSS class conflicts ----
+        // ─── Sidebar ─────────────────────────────────────────────────
+        let _sidebarOpen = false;
 
-        function openMobileSidebar() {
+        function openSidebar() {
+            if (!isMobile()) { return; }
+            _sidebarOpen = true;
             const sb = document.getElementById('notebooksSidebar');
-            const bd = document.getElementById('mobileSidebarBackdrop');
+            const bd = document.getElementById('mBackdrop');
             if (!sb) return;
-
-            // Inline styles beat everything — Tailwind .hidden, media queries, all of it
-            sb.style.cssText = [
-                'position:fixed',
-                'top:56px',
-                'right:0',
-                'bottom:56px',
-                'left:auto',
-                'width:min(88vw,310px)',
-                'height:auto',
-                'display:flex',
-                'flex-direction:column',
-                'overflow-y:auto',
-                'z-index:200',
-                'background:#fff',
-                'border-left:2px solid #000',
-                'border-right:none',
-                'box-shadow:-8px 0 32px rgba(0,0,0,0.22)',
-                'transform:none',
-                'transition:none',
-                'padding:0'
-            ].join(';');
-            sb.dataset.mobOpen = '1';
-
-            if (bd) { bd.style.display = 'block'; bd.offsetHeight; bd.style.opacity = '1'; }
-            
-            // Re-render notebooks so inline page list is visible and icons load
-            renderNotebooks();
-        }
-
-        function closeMobileSidebar() {
-            const sb = document.getElementById('notebooksSidebar');
-            const bd = document.getElementById('mobileSidebarBackdrop');
-            if (!sb) return;
-            // Clear ALL inline styles → desktop CSS takes over naturally
-            sb.style.cssText = '';
-            sb.dataset.mobOpen = '0';
-            if (bd) { bd.style.opacity = '0'; setTimeout(() => { bd.style.display = 'none'; }, 250); }
-        }
-
-        function toggleMobileSidebar() {
-            const sb = document.getElementById('notebooksSidebar');
-            if (!sb) return;
-            if (sb.dataset.mobOpen === '1') closeMobileSidebar();
-            else openMobileSidebar();
-        }
-
-        // ---- Bottom navigation ----
-        function mobileNav(viewName) {
-            closeMobileSidebar();
-            switchMainView(viewName);
-        }
-
-        function updateMobileNavHighlight(viewName) {
-            document.querySelectorAll('.mnav-btn').forEach(btn => {
-                btn.classList.remove('text-black');
-                btn.classList.add('text-zinc-400');
+            // Inline styles have highest specificity – beats everything
+            Object.assign(sb.style, {
+                position:      'fixed',
+                top:           '56px',
+                right:         '0',
+                bottom:        '56px',
+                left:          'auto',
+                width:         Math.min(Math.round(window.innerWidth * 0.84), 300) + 'px',
+                height:        'auto',
+                display:       'flex',
+                flexDirection: 'column',
+                overflowY:     'auto',
+                zIndex:        '350',
+                background:    '#ffffff',
+                borderLeft:    '2px solid #000',
+                borderRight:   'none',
+                boxShadow:     '-8px 0 28px rgba(0,0,0,.22)',
+                transform:     'none',
+                transition:    'none',
+                padding:       '0'
             });
-            const active = document.getElementById('mnav-' + viewName);
-            if (active) { active.classList.add('text-black'); active.classList.remove('text-zinc-400'); }
+            if (bd) bd.style.display = 'block';
+            renderNotebooks();   // rebuild list so inline page rows & icons are fresh
+            lucide.createIcons();
         }
 
-        // ---- Toolbar sheet ----
-        let toolbarSheetOpen = false;
-        function toggleMobileToolbarSheet() {
-            toolbarSheetOpen = !toolbarSheetOpen;
-            const sheet = document.getElementById('mobileToolbarSheet');
-            if (sheet) sheet.classList.toggle('open', toolbarSheetOpen);
-        }
-        function closeMobileToolbarSheet() {
-            toolbarSheetOpen = false;
-            const sheet = document.getElementById('mobileToolbarSheet');
-            if (sheet) sheet.classList.remove('open');
-        }
-        document.getElementById('paperSheet')?.addEventListener('touchstart', () => {
-            if (toolbarSheetOpen) closeMobileToolbarSheet();
-        }, { passive: true });
-
-        // ---- Voice input ----
-        let voiceRecognition = null;
-        function startVoiceInput() {
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SR) { showToast('קלט קולי אינו נתמך בדפדפן זה.', 'error'); return; }
-            if (voiceRecognition) { voiceRecognition.stop(); voiceRecognition = null; updateVoiceBtn(false); return; }
-            voiceRecognition = new SR();
-            voiceRecognition.lang = 'he-IL';
-            voiceRecognition.continuous = false;
-            voiceRecognition.interimResults = false;
-            voiceRecognition.onstart = () => { updateVoiceBtn(true); showToast('מאזין... דבר עכשיו 🎙', 'info'); };
-            voiceRecognition.onresult = (e) => {
-                const text = e.results[0][0].transcript;
-                const editor = document.getElementById('noteContent');
-                if (!editor) return;
-                editor.focus();
-                document.execCommand('insertText', false, text + ' ');
-                saveHistoryState(); savePageData();
-                showToast('✓ "' + text.slice(0, 30) + (text.length > 30 ? '...' : '') + '"', 'success');
-            };
-            voiceRecognition.onerror = (e) => {
-                if (e.error !== 'aborted') showToast('שגיאת קלט קולי: ' + e.error, 'error');
-                voiceRecognition = null; updateVoiceBtn(false);
-            };
-            voiceRecognition.onend = () => { voiceRecognition = null; updateVoiceBtn(false); };
-            try { voiceRecognition.start(); } catch(e) {
-                showToast('שגיאה בהפעלת המיקרופון.', 'error');
-                voiceRecognition = null; updateVoiceBtn(false);
-            }
-        }
-        function updateVoiceBtn(active) {
-            const btn = document.getElementById('voiceBtn');
-            if (!btn) return;
-            btn.style.background = active ? '#ef4444' : '';
-            btn.style.color = active ? '#fff' : '';
-        }
-
-        // ---- Swipe from right edge to open sidebar ----
-        let swipeStartX = 0, swipeStartY = 0, swipeEdgeStart = false;
-        document.addEventListener('touchstart', (e) => {
-            swipeStartX = e.touches[0].clientX;
-            swipeStartY = e.touches[0].clientY;
-            // Right edge swipe (RTL layout — sidebar is on the right)
-            swipeEdgeStart = swipeStartX > window.innerWidth - 28;
-        }, { passive: true });
-
-        document.addEventListener('touchend', (e) => {
-            if (!IS_MOBILE()) return;
-            const dx = e.changedTouches[0].clientX - swipeStartX;
-            const dy = Math.abs(e.changedTouches[0].clientY - swipeStartY);
+        function closeSidebar() {
+            _sidebarOpen = false;
             const sb = document.getElementById('notebooksSidebar');
-            // Open: edge swipe leftward (toward center in RTL)
-            if (swipeEdgeStart && dx < -45 && dy < 60) openMobileSidebar();
-            // Close: swipe rightward while open
-            if (sb && sb.dataset.mobOpen === '1' && dx > 55 && dy < 60) closeMobileSidebar();
+            const bd = document.getElementById('mBackdrop');
+            if (sb) sb.style.cssText = '';   // wipe all inline styles → desktop CSS takes over
+            if (bd) bd.style.display = 'none';
+        }
+
+        // ─── Bottom navigation ────────────────────────────────────────
+        function mNav(target) {
+            closeSheet();
+            if (target === 'notebooks') { _sidebarOpen ? closeSidebar() : openSidebar(); return; }
+            closeSidebar();
+            switchMainView(target === 'write' ? 'notebook' : target);
+            setMNavActive(target);
+        }
+
+        function setMNavActive(target) {
+            document.querySelectorAll('#mBottomNav > button').forEach(b => b.classList.remove('active'));
+            const b = document.querySelector('#mBottomNav > button[data-nav="' + target + '"]');
+            if (b) b.classList.add('active');
+        }
+
+        // Patch switchMainView so bottom nav stays in sync whatever triggers a view change
+        const _origSwitch = switchMainView;
+        switchMainView = function(view) {
+            _origSwitch(view);
+            if (isMobile()) {
+                const map = { notebook:'write', todo:'todo', glossary:'glossary',
+                              dashboard:'dashboard', calendar:'dashboard' };
+                setMNavActive(map[view] || view);
+            }
+        };
+
+        // ─── Slide-up tool sheet ──────────────────────────────────────
+        let _sheetOpen = false;
+        function toggleSheet() {
+            _sheetOpen = !_sheetOpen;
+            const s = document.getElementById('mSheet');
+            if (s) s.classList.toggle('open', _sheetOpen);
+        }
+        function closeSheet() {
+            _sheetOpen = false;
+            const s = document.getElementById('mSheet');
+            if (s) s.classList.remove('open');
+        }
+        // Tap on the paper area closes the sheet
+        document.getElementById('paperSheet')?.addEventListener('touchstart', () => {
+            if (_sheetOpen) closeSheet();
         }, { passive: true });
 
-        // ---- On selectPage, close sidebar and switch to notebook view — handled inside selectPage itself ----
+        // ─── Voice input ──────────────────────────────────────────────
+        let _voiceRec = null;
+        function startVoice() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) { showToast('קלט קולי לא נתמך בדפדפן זה', 'error'); return; }
+            if (_voiceRec) { _voiceRec.stop(); return; }
+            _voiceRec = new SR();
+            _voiceRec.lang = 'he-IL'; _voiceRec.continuous = false; _voiceRec.interimResults = false;
+            const btn = document.getElementById('mVoiceBtn');
+            _voiceRec.onstart = () => {
+                if (btn) { btn.style.background = '#ef4444'; btn.style.color = '#fff'; btn.style.borderRadius = '4px'; }
+                showToast('מאזין... 🎙', 'info');
+            };
+            _voiceRec.onresult = e => {
+                const text = e.results[0][0].transcript;
+                const ed   = document.getElementById('noteContent');
+                if (ed) { ed.focus(); document.execCommand('insertText', false, text + ' '); saveHistoryState(); savePageData(); }
+                showToast('"' + text.slice(0, 28) + (text.length > 28 ? '…' : '') + '"', 'success');
+            };
+            const done = () => {
+                _voiceRec = null;
+                if (btn) { btn.style.background = ''; btn.style.color = ''; btn.style.borderRadius = ''; }
+            };
+            _voiceRec.onend = done;
+            _voiceRec.onerror = e => { if (e.error !== 'aborted') showToast('שגיאת קלט קולי: ' + e.error, 'error'); done(); };
+            try { _voiceRec.start(); } catch (err) { showToast('שגיאת מיקרופון', 'error'); done(); }
+        }
+
+        // ─── Swipe gestures ───────────────────────────────────────────
+        (function () {
+            let sx = 0, sy = 0, fromEdge = false;
+            document.addEventListener('touchstart', e => {
+                sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+                fromEdge = sx > window.innerWidth - 28;   // right-edge zone (RTL sidebar)
+            }, { passive: true });
+            document.addEventListener('touchend', e => {
+                if (!isMobile()) return;
+                const dx = e.changedTouches[0].clientX - sx;
+                const dy = Math.abs(e.changedTouches[0].clientY - sy);
+                if (dy > 65 || Math.abs(dx) < 38) return;   // ignore verticals / short
+                if (fromEdge && dx < -38) openSidebar();     // swipe ← from right edge
+                if (_sidebarOpen && dx > 50) closeSidebar(); // swipe → to dismiss
+            }, { passive: true });
+        }());
+
+        // ─── selectPage: close sidebar, navigate to write ─────────────
+        const _origSelectPage = selectPage;
+        selectPage = function (id) {
+            _origSelectPage(id);
+            if (isMobile()) {
+                closeSidebar();
+                setTimeout(() => { switchMainView('notebook'); setMNavActive('write'); }, 40);
+            }
+        };
 
     </script>
 
-    <!-- Mobile: Sidebar Backdrop -->
-    <div id="mobileSidebarBackdrop" onclick="closeMobileSidebar()"></div>
+    <!-- Mobile: dim overlay behind open sidebar -->
+    <div id="mBackdrop" onclick="closeSidebar()"></div>
 
-    <!-- Mobile: Bottom Navigation Bar -->
-    <nav id="mobileBottomNav" class="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black z-[190] h-14">
-        <div class="flex h-full">
-            <button id="mnav-dashboard" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('dashboard')">
-                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-                <span class="text-[9px] font-bold uppercase">בית</span>
-            </button>
-            <button id="mnav-notebooks" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="toggleMobileSidebar()">
-                <i data-lucide="book-open" class="w-5 h-5"></i>
-                <span class="text-[9px] font-bold uppercase">מחברות</span>
-            </button>
-            <button id="mnav-notebook" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400 relative" onclick="mobileNav('notebook')">
-                <!-- Middle button: slightly elevated -->
-                <span class="absolute -top-4 w-12 h-12 bg-black rounded-full flex items-center justify-center shadow-lg">
-                    <i data-lucide="edit-3" class="w-5 h-5 text-white"></i>
-                </span>
-                <span class="text-[9px] font-bold uppercase mt-4">כתוב</span>
-            </button>
-            <button id="mnav-todo" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('todo')">
-                <i data-lucide="list-todo" class="w-5 h-5"></i>
-                <span class="text-[9px] font-bold uppercase">משימות</span>
-            </button>
-            <button id="mnav-glossary" class="mnav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-zinc-400" onclick="mobileNav('glossary')">
-                <i data-lucide="library" class="w-5 h-5"></i>
-                <span class="text-[9px] font-bold uppercase">מילון</span>
-            </button>
-        </div>
+    <!-- Mobile: bottom navigation bar -->
+    <nav id="mBottomNav">
+        <button onclick="mNav('dashboard')" data-nav="dashboard">
+            <i data-lucide="layout-dashboard"></i>
+            <span>בית</span>
+        </button>
+        <button onclick="mNav('notebooks')" data-nav="notebooks">
+            <i data-lucide="book-open"></i>
+            <span>מחברות</span>
+        </button>
+        <button onclick="mNav('write')" data-nav="write" style="position:relative;">
+            <div id="mNavWriteCircle"><i data-lucide="edit-3"></i></div>
+            <span style="margin-top:12px;">כתוב</span>
+        </button>
+        <button onclick="mNav('todo')" data-nav="todo">
+            <i data-lucide="list-todo"></i>
+            <span>משימות</span>
+        </button>
+        <button onclick="mNav('glossary')" data-nav="glossary">
+            <i data-lucide="library"></i>
+            <span>מילון</span>
+        </button>
     </nav>
 
-    <!-- Mobile: FAB (quick new page when in notebook) -->
-    <button id="mobileFAB" onclick="if(activeNotebookId) openCreatePageModal(); else openNewNotebookModal();"
-        class="fixed right-4 z-[185] w-13 h-13 bg-black text-white shadow-[4px_4px_0_0_rgba(0,0,0,0.25)] items-center justify-center rounded-full transition-all active:scale-95"
-        style="bottom: 72px; width: 52px; height: 52px;" title="דף חדש">
-        <i data-lucide="plus" class="w-6 h-6"></i>
-    </button>
 
+</body>
+</html>
 </body>
 </html>
